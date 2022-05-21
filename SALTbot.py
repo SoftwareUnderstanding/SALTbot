@@ -9,7 +9,9 @@ import bibtexparser
 import requests
 import time
 import click
+from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 from datetime import datetime
+import pywikibot
 
 #devuelve un diccionario con el Qnode como Key y su label como value
 def getEntitiesByName(url, name, entityType):
@@ -148,50 +150,108 @@ def checkEnlaces(enlaces_Articulo, enlaces_Software, Qnode_a, Qnode_s):
 	return (enlace_articulo_software, enlace_software_articulo)
 
 
+@click.group(context_settings={'help_option_names': ['-h', '--help']})
+def cli():
+    print("SALTbot: Software and Article Linker Toolbot")
+
+
 @click.command()
-@click.option('--auto', '-a', is_flag=True, help='sets bot to auto mode')
-@click.option('--jsonfile','-js', default=None, type = click.Path(exists=True), help='JSON extracted from the repository with SOMEF')
-@click.option('--keyword', '-k', default = None, help = 'Keyword for searching in case no articles or software were found')
-@click.option('--url', '-u', default = None, help = 'repository url')
-@click.option('--csvfile','-csv', default=None, type = click.Path(exists=True), help='.csv file with one or more entries and format \n {URL,KEYWORD}')
-@click.option('--jsondir', '-dir', default = None, type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF')
+@click.option('--auto', '-a', is_flag=True, help='Sets bot to auto mode. The bot will only ask for user confirmations if one or more articles or software are found in wikidata\n')
+@click.option('--keyword', '-k', default = None, help = 'Keyword for searching in case the repository treatment found no articles or software on wikidata\n')
+@click.option('--output', '-o', default=None, type = click.Path(), help='If options that require extracting metadata with somef are used (url, csvfile), this will be the path of the metadata output')
 
-def main(auto, jsonfile, keyword, url, csvfile, jsondir):
+@optgroup.group('Input', cls=RequiredMutuallyExclusiveOptionGroup)
+@optgroup.option('--readmedir', '-rdir', type = click.Path(exists=True), help = 'Path to the target repository readme file')
+@optgroup.option('--jsonfile','-js', type = click.Path(exists=True), help='Path to the JSON extracted from the target repository with SOMEF')
+@optgroup.option('--url', '-u', help = 'URL of target repository')
+@optgroup.option('--csvfile','-csv', type = click.Path(exists=True), help='.csv file with one or more entries and format \n {URL,KEYWORD}')
+@optgroup.option('--jsondir', '-rjs', type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF')
 
-	if(jsonfile != None and url == None and csvfile == None and jsondir == None):
+
+
+
+def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
+
+	if(readmedir):
+		print("--------------------------------------------README: ",readmedir,"--------------------------------------------")
+
+		if(output):
+
+			os.system("somef describe -d "+readmedir+" -o "+output+" -t 0.8")
+			try:
+				f = open(output,"r")
+			except:
+				sys.exit("SALTbot ERROR: Path provided as README file parameter is invalid")
+
+
+
+		else:
+			now = datetime.now().time()
+			fich = str(now).replace(":", "") + ".json"
+			os.system("somef describe -r "+url+" -o "+fich+" -t 0.8")
+
+			try:
+				f = open(fich,"r")
+			except:
+				sys.exit("SALTbot ERROR: Path provided as README file parameter is invalid")
+
+		info = json.loads(f.read())
+		SALTbot(info, keyword)
+	elif(jsonfile):
+
 		print("--------------------------------------------FILE: ",jsonfile,"--------------------------------------------")
+
 		try:
 			f = open(jsonfile, 'r')
 		except:
 			sys.exit("SALTbot ERROR: Path provided as JSON file parameter is invalid")
 
-	elif(jsonfile == None and url != None and csvfile == None and jsondir == None):
+		info = json.loads(f.read())
+		SALTbot(info, keyword)
+
+	elif(url):
+
 		print("--------------------------------------------URL: ",url,"--------------------------------------------")
-		now = datetime.now().time()
-		fich = str(now).replace(":", "") + ".json"
-		os.system("somef describe -r "+url+" -o "+fich+" -t 0.8")
-		try:
-			f = open(fich,"r")
-		except:
-			sys.exit("SALTbot ERROR: url is not a valid repository")
-	elif(jsonfile == None and url == None and csvfile != None and jsondir == None):
+
+		if(output):
+
+			os.system("somef describe -r "+url+" -o "+output+" -t 0.8")
+			try:
+				f = open(output,"r")
+			except:
+				sys.exit("SALTbot ERROR: url is not a valid repository")
+
+		else:
+			now = datetime.now().time()
+			fich = str(now).replace(":", "") + ".json"
+			os.system("somef describe -r "+url+" -o "+fich+" -t 0.8")
+
+			try:
+				f = open(fich,"r")
+			except:
+				sys.exit("SALTbot ERROR: url is not a valid repository")
+
+		info = json.loads(f.read())
+		SALTbot(info, keyword)
+
+	elif(csvfile):
 		pass
-	elif(jsonfile == None and url == None and csvfile == None and jsondir != None):
+	elif(jsondir):
+
+		#llamar con glob a SALTbot
+		#recoger cada tupla y tipo en una lista
+		#abrir documento y pegar
 		pass
-	else:
-		sys.exit("SALTbot ERROR: Provide at least one and only one of the following parameters: \n --jsonfile \n --url \n --csvfile \n --jsondir")
 
 
-	#Se pasa el fichero a JSON
-	info = json.loads(f.read())
+
+
+
+
+
+def SALTbot(info, keyword):
 
 	parsedinfo = []
-
-	pag_articulo = False
-	pag_software = False
-	enlace_readme_articulo = False
-	enlace_articulo_software = False
-	enlace_software_articulo = False
 
 	#Si tiene cita
 	if("citation" in info.keys()):
@@ -212,6 +272,11 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 
 
+	print("\n")
+
+	click.echo(click.style('TITLE EXTRACTION', fg='red'))
+
+	print("\n")
 
 	# si se ha encontrado al menos un titulo
 	if(parsedinfo != []):
@@ -224,7 +289,7 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 				#Se imprime el titulo
 				try:
-					print("TITULO DETECTADO: ", i[1].entries[0]["title"], "     ", "TECNICA EMPLEADA: ", i[2], "     ", "PARSING: ", i[0])
+					print("DETECTED TITLE: ", i[1].entries[0]["title"], "     ", "TECHNIQUE: ", i[2])
 
 				#si el archivo se ha parseado mal se elimina
 				except:
@@ -235,7 +300,7 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 				#Se imprime el titulo
 				try:
-					print("TITULO DETECTADO: ", i[1]["title"], "     ", "TECNICA EMPLEADA: ", i[2],"     ", "PARSING: ", i[0])
+					print("DETECTED TITLE: ", i[1]["title"], "     ", "TECHNIQUE: ", i[2])
 
 				#si el archivo se ha parseado mal se elimina
 				except:
@@ -243,11 +308,11 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 
 	#Si no se encuentran titulos
-	else:
-		print("TITULOS NO DETECTADOS")
+	if(parsedinfo == []):
+		print("NO DETECTED TITLES")
 
 
-	#url = 'https://query.wikidata.org/sparql'
+
 	url = 'https://query.wikidata.org/sparql'
 	set_articulos = {}
 	set_softwares = {}
@@ -256,12 +321,8 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 	#por cada elemento en la lista de titulos
 	for i in parsedinfo:
 
-		#si es repository name se añade el titulo
-		if(i[0]=="REPOSITORY NAME"):
-			concat_query = i[1]
-
 		#si es BIB se extrae del bibtex
-		elif(i[0] == "BIB"):
+		if(i[0] == "BIB"):
 			concat_query = i[1].entries[0]["title"]
 
 		#si es YAML se extrae del YAML
@@ -285,26 +346,19 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 
 
-	#So ha encontrado al menos una entidad a partir de los datos parseados
-	if(set_articulos != {}):
-		#Existe la pagina del articulo en WikiData
-		pag_articulo = True
-
-		#Existe un enlace desde el repositorio hasta el articulo en Wikidata
-		enlace_readme_articulo = True
-
-
 	#Si no ha encontrado nada
-	else:
-		print("NO SE HAN DETECTADO ARTICULOS - SE PRUEBA CON API")
+	if(set_articulos == {}):
+		print("NO ARTICLES DETECTED - TRYING NAME SEARCH")
 
-		#Se buscan todos los articulos a partir del nombre del repositorio
-		set_articulos = getEntitiesByName(url, info['name']['excerpt'], 0)
+		if(keyword == None):
+			#Se buscan todos los articulos a partir del nombre del repositorio
+			set_articulos = getEntitiesByName(url, info['name']['excerpt'], 0)
+
+		else:
+			set_articulos = getEntitiesByName(url, keyword, 0)
+
 		time.sleep(1)
 
-		#si buscando el repositorio se ha encontrado al menos un articulo existe pagina de articulo
-		if(set_articulos!={}):
-			pag_articulo = True
 
 
 
@@ -316,8 +370,6 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 		#Se buscan sus softwares enlazados
 		result_software = softwaresEnlazados(url, i)
-
-
 		time.sleep(1)
 
 
@@ -331,29 +383,18 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 
 
-	#Si se ha encontrado al menos un enlace articulo-software
-	if(enlaces_articulo_software != {}):
 
-		#existe la pagina de software
-		pag_software = True
+	if(enlaces_articulo_software == {}):
+		print("NO SOFTWARES DETECTED - TRYING NAME SEARCH")
 
-		#existe el enlace articulo-software
-		enlace_articulo_software = True
-
-	#si no se ha encontrado ningun software enlazado
-	else:
-		print("NO SE HAN DETECTADO SOFTWARES - SE PRUEBA CON API")
-
-		#se buscan todos los softwares a partir del nombre del repositorio
-		set_softwares = getEntitiesByName(url, info['name']['excerpt'], 1)
+		if(keyword == None):
+			#se buscan todos los softwares a partir del nombre del repositorio
+			set_softwares = getEntitiesByName(url, info['name']['excerpt'], 1)
+		else:
+			set_softwares = getEntitiesByName(url, keyword, 1)
 
 		time.sleep(1)
 
-		#si se ha encontrado al menos un software
-		if(set_softwares!={}):
-
-			#existe la pagina de software
-			pag_software = True
 
 	#comprobar enlaces_completos
 
@@ -366,43 +407,53 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 		if(result_articulo != {}):
 			enlaces_software_articulo.update({i:result_articulo})
 
-	if(enlaces_software_articulo != {}):
-		enlace_software_articulo=True
 
 
 	print("\n")
-	print("RESULTADOS ENCONTRADOS: ")
+	click.echo(click.style('RESULTS FOUND ON WIKIDATA: ', fg='red'))
 	print("\n")
-	print("ARTICULOS: ")
+	click.echo(click.style('ARTICLES: ', fg='blue'))
 	for i in set_articulos:
 		print(i, " : ", set_articulos[i])
 
 	print("\n")
-	print("SOFTWARES: ")
+	click.echo(click.style('SOFTWARES: ', fg='blue'))
 	for i in set_softwares:
 		print(i, " : ", set_softwares[i])
 
 	print("\n")
-	print("CLASIFICACION")
-	print("\n")
-	#print("pag_software: ", pag_software)
-	#print("pag_articulo: ", pag_articulo)
-	#print("enlace_readme_articulo: ", enlace_readme_articulo)
-	#print("enlace_articulo_software", enlace_articulo_software)
-	#print("enlace_software_articulo", enlace_software_articulo)
-	print("enlaces articulo-software", enlaces_articulo_software)
-	print("enlaces software-articulo", enlaces_software_articulo)
+	click.echo(click.style('CLASIFICATION', fg='red'))
 	print("\n")
 
 
+	click.echo(click.style('ARTICLES LINKED WITH SOFTWARE: ', fg='blue'))
 
-	if(set_articulos != {} and set_softwares != {}):
+	for i in enlaces_articulo_software:
+		for j in enlaces_articulo_software[i]:
+			print("| ",i, " : ", set_articulos[i], " | IS LINKED WITH SOFTWARE | ", j, " : ", set_softwares[j], " |")
 
-		print("ENLAZAMIENTO")
-		print("\n")
+	print()
+	click.echo(click.style('SOFTWARE LINKED WITH ARTICLES: ', fg='blue'))
+
+
+	for i in enlaces_software_articulo:
+		for j in enlaces_software_articulo[i]:
+			print("| ",i, " : ", set_softwares[i], " | IS LINKED WITH ARTICLE | ", j, " : ", set_articulos[j], " |")
+
+
+	print("\n")
+
+
+
+	if(set_articulos != {} ):
+
+
+		click.echo(click.style('LINKING', fg='red'))
+		print()
 		contador = 0
 		map_articulos = {}
-		print("SELECCIONE UN ARTICULO: ")
+		click.echo(click.style('SELECT AN ARTICLE : ', fg='green'))
+
 		for i in set_articulos:
 			contador = contador + 1
 			print(contador, " - ", i, " : ", set_articulos[i])
@@ -410,44 +461,225 @@ def main(auto, jsonfile, keyword, url, csvfile, jsondir):
 
 
 
-
-		inp_articulo = input("NUMERO ARTICULO: ").strip()
+		print()
+		inp_articulo = input("ARTICLE NUMBER: ").strip()
 
 		while(inp_articulo not in map_articulos):
-			inp_articulo = input("NO ES UN ARTICULO VALIDO. SELECCIONE OTRO: ").strip()
+			inp_articulo = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
 
 
+		print()
 		contador = 0
 		map_softwares = {}
-		print("SELECCIONE UN QNODE DE SOFTWARE: ")
-		for i in set_softwares:
-			contador = contador + 1
-			print(contador, " - ", i, " : ", set_softwares[i])
-			map_softwares.update({str(contador):i})
+		if(set_softwares!={}):
+			click.echo(click.style('SELECT A SOFTWARE : ', fg='green'))
+
+			for i in set_softwares:
+				contador = contador + 1
+				print(contador, " - ", i, " : ", set_softwares[i])
+				map_softwares.update({str(contador):i})
 
 
-		inp_software = input("NUMERO SOFTWARE: ").strip()
+			inp_software = input("SOFTWARE NUMBER: ").strip()
 
-		while(inp_software not in map_softwares):
-			inp_software = input("NO ES UN SOFTWARE VALIDO. SELECCIONE OTRO: ").strip()
+			while(inp_software not in map_softwares):
+				inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()
 
 
-		print("QNODEART: ", map_articulos[inp_articulo])
-		print("QNODEsoft: ", map_softwares[inp_software])
-		res = checkEnlaces(enlaces_articulo_software, enlaces_software_articulo, map_articulos[inp_articulo], map_softwares[inp_software])
-
-		#print(res[0], res[1])
-
-		if(res[0]==0):
-			print("enlazar inp_articulo main_subject inp_software")
-
+			res = checkEnlaces(enlaces_articulo_software, enlaces_software_articulo, map_articulos[inp_articulo], map_softwares[inp_software])
 		else:
-			print("articulo ya enlazado con software")
-		if(res[1]==0):
-			print("enlazar inp_software described_by_source inp_articulo")
+			res = (0,0)
+			inp_software = None
 
-		else:
-			print("software ya enlazado con articulo")
+
+
+		dict_translated_entities = {"pytorch":("Q224971","Q224970"), "kgtk":("Q224971","Q224970"), "intermine":("Q224971","Q224970"), "bitcoin":("Q224971","Q224970"), "Widoco":("Q224971",None)}
+
+		main_subject_test_wikidata = u'P96293'
+		described_by_source_test_wikidata = u'P96292'
+		has_source_repository_test_wikidata = u''
+
+
+		name = info['name']['excerpt']
+		print()
+
+		if(name in dict_translated_entities.keys()):
+
+			selected_article_qnode = map_articulos[inp_articulo]
+
+			if(inp_software != None):
+
+				selected_software_qnode = map_softwares[inp_software]
+
+				if(res==(0, 0)):
+
+					click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green'))
+					click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green'))
+
+				elif(res==(0, 1)):
+
+					click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green'))
+					print("SOFTWARE_ARTICLE_LINK: SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_software_qnode, " P1343 ",  selected_article_qnode)
+					#print("SOFTWARE_ARTICLE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", dict_translated_entities[name][1], " ", described_by_source_test_wikidata, " ", dict_translated_entities[name][0])
+
+
+
+				elif(res==(1, 0)):
+
+					click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green'))
+					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_article_qnode, " P921 ", selected_software_qnode)
+					#print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", dict_translated_entities[name][0], " ", main_subject_test_wikidata, " ", dict_translated_entities[name][1])
+
+
+
+				elif(res==(1, 1)):
+
+					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_article_qnode, " P921 ", selected_software_qnode)
+					#print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", dict_translated_entities[name][0], " ", main_subject_test_wikidata, " ", dict_translated_entities[name][1])
+					print("SOFTWARE_ARTICLE_LINK: SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_software_qnode, " P1343 ",  selected_article_qnode)
+					#print("SOFTWARE_ARTICLE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", dict_translated_entities[name][1], " ", described_by_source_test_wikidata, " ", dict_translated_entities[name][0])
+
+
+				if(res!=(0,0)):
+					print()
+					confirmation = input("CONFIRM (Y/N): ").strip()
+
+					while(confirmation != "Y" and confirmation != "N"):
+						confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+
+
+
 
 if(__name__=='__main__'):
 	main()
+'''
+
+				if(confirmation == "Y"):
+
+					site = pywikibot.Site("test", "wikidata")
+
+					article_qnode = dict_translated_entities[name][0]
+					software_qnode = dict_translated_entities[name][1]
+
+
+					if(res[0]==0):
+						print()
+
+						article_repo = site.data_repository()
+						article_page = pywikibot.ItemPage(article_repo, article_qnode)
+						article_no_claim = article_page.get()
+						article_claim = pywikibot.Claim(article_repo, main_subject_test_wikidata) 				#Adding main_subject property
+						article_target = pywikibot.ItemPage(article_repo, software_qnode) 	#linking article with software
+						article_claim.setTarget(article_target) 												#Set the target value in the local object.
+
+						message_summary = u'Adding claim main_subject ' + str(software_qnode) +u' to entity ' + str(article_qnode)
+
+						print(message_summary)
+						article_page.addClaim(article_claim, summary=message_summary) 							#Inserting value with summary to article
+
+					if(res[1]==0):
+						print()
+
+						software_repo = site.data_repository()
+						software_page = pywikibot.ItemPage(software_repo, software_qnode)
+						software_no_claim = software_page.get()
+						software_claim = pywikibot.Claim(software_repo, described_by_source_test_wikidata) 			#Adding described_by_source property
+						software_target = pywikibot.ItemPage(software_repo, article_qnode) 		#linking software to article
+						software_claim.setTarget(software_target)       												#Set the target value in the local object.
+
+						message_summary = u'Adding claim described_by_source ' + str(article_qnode) + u' to ' + str(software_qnode)
+
+						print(message_summary)
+
+						software_page.addClaim(software_claim, summary=message_summary) 							#Inserting value with summary to Q210194
+
+
+
+
+
+
+
+			else:
+
+				print("NO SOFTWARE PAGE DETECTED, SALTbot WILL CREATE A PAGE WITH:\n")
+				print("LABEL: ", name, "\n")
+				print("has_source_code_repository: ", info['codeRepository']['excerpt'])
+
+
+				print()
+
+				confirmation = input("CONFIRM (Y/N): ").strip()
+
+				while(confirmation != "Y" and confirmation != "N"):
+					confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+
+
+				if(confirmation == "Y"):
+					site = pywikibot.Site("test", "wikidata")
+
+					message_summary = u'Creating new software: ' + name
+					test_name = "SALTbot test : "+name+" demostracion"
+					label_dict = {"en": test_name}
+
+					new_software = pywikibot.ItemPage(site)
+
+					new_software.editLabels(labels=label_dict, summary=message_summary)
+
+					software_qnode = new_software.getID()
+					article_qnode = dict_translated_entities[name][0]
+
+					print()
+					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_article_qnode, " P921 ", software_qnode)
+					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", article_qnode, " ", main_subject_test_wikidata, " ", software_qnode)
+					print("SOFTWARE_ARTICLE_LINK: SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", software_qnode," P1343 ", selected_article_qnode)
+					print("SOFTWARE_ARTICLE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", software_qnode, " ", described_by_source_test_wikidata, " ", article_qnode)
+
+					print()
+					confirmation = input("CONFIRM (Y/N): ").strip()
+
+					while(confirmation != "Y" and confirmation != "N"):
+						confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+
+
+					if(confirmation == "Y"):
+
+
+						software_repo = site.data_repository()
+						software_page = pywikibot.ItemPage(software_repo, software_qnode)
+
+						software_no_claim = software_page.get()
+
+						software_claim = pywikibot.Claim(software_repo, has_source_repository_test_wikidata) 			#Adding described_by_source property
+						software_target = pywikibot.ItemPage(software_repo, info['codeRepository']['excerpt']) 		#linking software to article
+						software_claim.setTarget(software_target)
+
+						software_no_claim = software_page.get()
+
+						software_claim = pywikibot.Claim(software_repo, described_by_source_test_wikidata) 			#Adding described_by_source property
+						software_target = pywikibot.ItemPage(software_repo, article_qnode) 		#linking software to article
+						software_claim.setTarget(software_target)       												#Set the target value in the local object.
+
+
+
+						message_summary = u'Adding claim described_by_source ' + str(article_qnode) + u' and has_source_code_repository ' +info['codeRepository']['excerpt'] + u' to ' + str(software_qnode)
+
+						print(message_summary)
+
+						software_page.addClaim(software_claim, summary=message_summary)
+
+						article_repo = site.data_repository()
+						article_page = pywikibot.ItemPage(article_repo, article_qnode)
+						article_no_claim = article_page.get()
+						article_claim = pywikibot.Claim(article_repo, main_subject_test_wikidata) 				#Adding main_subject property
+						article_target = pywikibot.ItemPage(article_repo, software_qnode) 	#linking article with software
+						article_claim.setTarget(article_target) 												#Set the target value in the local object.
+
+						message_summary = u'Adding claim main_subject ' + str(software_qnode) +u' to entity ' + str(article_qnode)
+
+						print(message_summary)
+						article_page.addClaim(article_claim, summary=message_summary)
+
+
+
+
+'''
