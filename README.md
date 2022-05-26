@@ -2,21 +2,62 @@
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 
 
-## DESCRIPCIÓN
+## DESCRIPTION
 
-  Este repositorio contiene la implementación de un bot capaz de enlazar Articulos Cientificos y su implementación Software en Wikidata
-
-## INSTALACIÓN
-
-  Es necesario disponer de un entorno con Python 3.9 y la herramienta SOMEF (https://github.com/KnowledgeCaptureAndDiscovery/somef) antes de ejecutar el script
-
-## USO
-
-  ### **./main URL** 
   
-  El script descargará los metadatos del repositorio con SOMEF y comenzará la ejecución
+  This repository contains the implementation of a bot capable of linking Scientific Articles and their Software pages on Wikidata
+
+## INSTALATION
+
+  It is required to have an environment with Python 3.9 
   
-  ### **./main -i FICHERO.json**
+  ### -SOMEF (https://github.com/KnowledgeCaptureAndDiscovery/somef) 
+  run:
   
-  Si los metadatos del repositorio ya están descargados en un fichero JSON se puede pasar como parámetro para no tener que extraer los metadatos
+    >pip install somef
+  
+    >somef configure
+  
+  ### -PyYAML
+  run:
+   
+    >pip install pyyaml
+  
+  ### -BibTexParser
+  run:
+  
+    >pip install bibtexparser
+  
+  ### -CLICK
+  run:
+  
+    >pip install click
+  
+    >pip install click.opt.group
+  
+  ### -Pywikibot (https://github.com/wikimedia/pywikibot)
+  run:
+  
+    >git clone https://github.com/wikimedia/pywikibot
+  
+    >cd pywikibot
+  
+    >python pwb.py login.py
+  
+   **When propmted:**
+   
+   1-.Choose Wikidata (number 14) as family of sites
+   
+   2-.Choose test as the site of code we are working on
+   
+   3-.Introduce your Wikidata username
+   
+   4-.(OPTIONAL) Introduce your bot password. This allows to modify the permissions of Pywikibot. 
+        If introduced, you will not have to introduce your user password each time Pywikibot logs off. For creating one, go to: https://test.wikidata.org/wiki/Special:BotPasswords
+  
+  
+## USAGE
+
+  ### **python PATH_TO_pwb.py SALTbot.py [ARGS]** 
+  
   
