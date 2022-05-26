@@ -60,4 +60,4 @@
 
   ### **python PATH_TO_pwb.py SALTbot.py [ARGS]** 
   
-  
+  Note: if you want to actually edit the test instance of wikidata, manually edit the values of the desired target qnodes (qnode_article_test, qnode_software_test) and properties (main_subject_test, described_by_source_test) to use, and change upload to True in SALTbot.py main.
