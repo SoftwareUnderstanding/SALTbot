@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from urllib.parse import urlparse
+from numpy import True_
 import yaml
 from yaml.loader import SafeLoader
 import bibtexparser
@@ -156,28 +157,28 @@ def print_links(selected_article_qnode, selected_software_qnode, res):
 	print()
 	if(res==(1, 1)):
 
-		click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green'))
-		click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green'))
+		click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green', bold =True))
+		click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green', bold =True))
 		return 
 
 	elif(res==(1, 0)):
 
-		click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green'))
-		print("SALTbot WILL INTRODUCE THE SOFTWARE-ARTICLE LINK IN WIKIDATA")
+		click.echo(click.style('ARTICLE ALREADY LINKED WITH SOFTWARE', fg='green', bold =True))
+		click.echo(click.style('SALTbot WILL INTRODUCE THE SOFTWARE-ARTICLE LINK IN WIKIDATA', bold =True))
 		return [(selected_software_qnode, "P1343",  selected_article_qnode)]
 
 
 	elif(res==(0, 1)):
 
-		click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green'))
-		print("SALTbot WILL INTRODUCE THE ARTICLE-SOFTWARE LINK IN WIKIDATA")
+		click.echo(click.style('SOFTWARE ALREADY LINKED WITH ARTICLE', fg='green', bold =True))
+		click.echo(click.style('SALTbot WILL INTRODUCE THE ARTICLE-SOFTWARE LINK IN WIKIDATA', bold =True))
 	
 		return [(selected_article_qnode, "P921", selected_software_qnode)]
 
 	elif(res==(0, 0)):
 
-		print("SALTbot WILL INTRODUCE THE ARTICLE-SOFTWARE LINK IN WIKIDATA")
-		print("SALTbot WILL INTRODUCE THE SOFTWARE-ARTICLE LINK IN WIKIDATA")
+		click.echo(click.style('SALTbot WILL INTRODUCE THE ARTICLE-SOFTWARE LINK IN WIKIDATA', bold =True))
+		click.echo(click.style('SALTbot WILL INTRODUCE THE SOFTWARE-ARTICLE LINK IN WIKIDATA', bold =True))
 		
 		return [(selected_software_qnode, "P1343",  selected_article_qnode), (selected_article_qnode, "P921", selected_software_qnode)]
 
@@ -395,7 +396,7 @@ def SALTbot(info, keyword, auto):
 		print()
 		contador = 0
 		map_articulos = {}
-		click.echo(click.style('SELECT AN ARTICLE : ', fg='blue'))
+		click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
 
 		for i in set_articulos:
 			contador = contador + 1
@@ -415,7 +416,7 @@ def SALTbot(info, keyword, auto):
 		contador = 0
 		map_softwares = {}
 		if(set_softwares!={}):
-			click.echo(click.style('SELECT A SOFTWARE : ', fg='blue'))
+			click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
 
 			for i in set_softwares:
 				contador = contador + 1
@@ -468,24 +469,35 @@ def cli():
 
 
 @click.command()
-@click.option('--auto', '-a', is_flag=True, help='Sets bot to auto mode. The bot will only ask for user confirmations if one or more articles or software are found in wikidata\n')
-@click.option('--keyword', '-k', default = None, help = 'Keyword for searching in case the repository treatment found no articles or software on wikidata\n')
-@click.option('--output', '-o', default=None, type = click.Path(), help='If options that require extracting metadata with somef are used (url, csvfile), this will be the path of the metadata output')
+@click.option('--auto', '-a', is_flag=True, help='Sets bot to auto mode. The bot will not ask for user confirmations and will only require supervision if one or more articles or software are found in Wikidata.')
+@click.option('--keyword', '-k', default = None, help = 'Keyword for searching in case the repository treatment found no articles or software on Wikidata.')
+@click.option('--output', '-o', default=None, type = click.Path(), help='If url is used, this will be the path of the metadata output produced by SOMEF.')
 
 @optgroup.group('Input', cls=RequiredMutuallyExclusiveOptionGroup)
-@optgroup.option('--readmedir', '-rdir', type = click.Path(exists=True), help = 'Path to the target repository readme file')
-@optgroup.option('--jsonfile','-js', type = click.Path(exists=True), help='Path to the JSON extracted from the target repository with SOMEF')
-@optgroup.option('--url', '-u', help = 'URL of target repository')
-@optgroup.option('--csvfile','-csv', type = click.Path(exists=True), help='.csv file with one or more entries and format \n {URL,KEYWORD}')
-@optgroup.option('--jsondir', '-rjs', type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF')
+@optgroup.option('--readmedir', '-rdir', type = click.Path(exists=True), help = 'Path to the target repository if the repository is local.')
+@optgroup.option('--url', '-u', help = 'URL of the remote target repository.')
+@optgroup.option('--urlfile','-ru', type = click.Path(exists=True), help='File with one or more url entries to be treated. SALTbot will analyze each individual url in succesion and introduce the links afterwards.')
+@optgroup.option('--jsonfile','-js', type = click.Path(exists=True), help='Path to the JSON extracted from the target repository with SOMEF.')
+@optgroup.option('--jsondir', '-rjs', type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF. SALTbot will analyze each individual json in succesion and introduce the links afterwards.')
 
 
 
 
-def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
+def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
+
+	qnode_article_test = 'Q225100'
+	qnode_software_test = 'Q225099'
+	main_subject_test ='P96347'
+	described_by_source_test = 'P96348'
+	
+	upload = False
+
+	operation_list = []
 
 	if(readmedir):
-		print("--------------------------------------------README: ",readmedir,"--------------------------------------------")
+		print()
+		operation = "README: " + readmedir
+		click.echo(click.style(operation, fg='yellow', bold=True))
 
 		if(output):
 
@@ -510,7 +522,7 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 
 		info = json.loads(f.read())
 		res = SALTbot(info, keyword, auto)
-		operation_list = []
+		
 		
 		if(res == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
@@ -519,35 +531,35 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 				aux = print_links(res[0], res[1], res[2])
 				if aux != None:
 					operation_list.append(aux)
+
 			else:
-				#create articulo
-				#operation_list.append(print_links(res[0], res[1], res[2]))
-				pass
-			
-			if(operation_list!=[]):
-				print()
-				click.echo(click.style('SALTbot WILL INTRODUCE THIS STATEMENTS IN WIKIDATA', fg='red'))
-				for i in operation_list:
-					for j in i:
-						if j[1]=='P921':
-							print("| ARTICLE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : main_subject | SOFTWARE: ", j[2][0], " : ", j[2][1], " |")
-						elif j[1]=='P1343':
-							print("| SOFTWARE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : described_by_source | ARTICLE: ", j[2][0], " : ", j[2][1], " |")
+				site = pywikibot.Site("test", "wikidata")
+
+				message_summary = u'Creating new software: ' + info['name']['excerpt']
+				test_name = "SALTbot test : "+info['name']['excerpt']
+				label_dict = {"en": test_name}
 
 				
-				print()
-				confirmation = input("CONFIRM (Y/N): ").strip()
+				if(upload):
+					new_software = pywikibot.ItemPage(site)
 
-				while(confirmation != "Y" and confirmation != "N"):
-					confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+					new_software.editLabels(labels=label_dict, summary=message_summary)
 
+					software_qnode = new_software.getID()
+				
+					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+				else:
+					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+			
+			
 
 		
 
 	elif(jsonfile):
 
-		print("--------------------------------------------FILE: ",jsonfile,"--------------------------------------------")
-
+		print()
+		operation = "JSONFILE: " + jsonfile
+		click.echo(click.style(operation, fg='yellow', bold=True))
 		try:
 			f = open(jsonfile, 'r')
 		except:
@@ -556,44 +568,48 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 
 		info = json.loads(f.read())
 		res = SALTbot(info, keyword, auto)
-		operation_list = []
+		
+		
 		
 		if(res == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
 		else: 
-			if(res[1]!=None):
+			if(res[1]!=(None, None)):
 				aux = print_links(res[0], res[1], res[2])
+				
 				if aux != None:
 					operation_list.append(aux)
 				
 			else:
-				#create articulo
-				#operation_list.append(print_links(res[0], res[1], res[2]))
-				pass
-			
-			if(operation_list!=[]):
-				print()
-				click.echo(click.style('SALTbot WILL INTRODUCE THIS STATEMENTS IN WIKIDATA', fg='red'))
-				for i in operation_list:
-					for j in i:
-						if j[1]=='P921':
-							print("| ARTICLE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : main_subject | SOFTWARE: ", j[2][0], " : ", j[2][1], " |")
-						elif j[1]=='P1343':
-							print("| SOFTWARE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : described_by_source | ARTICLE: ", j[2][0], " : ", j[2][1], " |")
+				
+				site = pywikibot.Site("test", "wikidata")
+
+				message_summary = u'Creating new software: ' + info['name']['excerpt']
+				test_name = "SALTbot test : "+info['name']['excerpt']
+				label_dict = {"en": test_name}
 
 				
-				print()
-				confirmation = input("CONFIRM (Y/N): ").strip()
+				if(upload):
+					new_software = pywikibot.ItemPage(site)
 
-				while(confirmation != "Y" and confirmation != "N"):
-					confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
+					new_software.editLabels(labels=label_dict, summary=message_summary)
+
+					software_qnode = new_software.getID()
+				
+					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+				else:
+					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+			
+			
 
 
 		
 
 	elif(url):
 
-		print("--------------------------------------------URL: ",url,"--------------------------------------------")
+		print()
+		operation = "URL: " + url
+		click.echo(click.style(operation, fg='yellow', bold=True))
 
 		if(output):
 
@@ -615,7 +631,7 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 
 		info = json.loads(f.read())
 		res = SALTbot(info, keyword, auto)
-		operation_list = []
+		
 		
 		if(res == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
@@ -625,40 +641,87 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 				if aux != None:
 					operation_list.append(aux)
 			else:
-				#create articulo
-				#operation_list.append(print_links(res[0], res[1], res[2]))
-				pass
-			
-			if(operation_list!=[]):
-				print()
-				click.echo(click.style('SALTbot WILL INTRODUCE THIS STATEMENTS IN WIKIDATA', fg='red'))
-				for i in operation_list:
-					for j in i:
-						if j[1]=='P921':
-							print("| ARTICLE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : main_subject | SOFTWARE: ", j[2][0], " : ", j[2][1], " |")
-						elif j[1]=='P1343':
-							print("| SOFTWARE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : described_by_source | ARTICLE: ", j[2][0], " : ", j[2][1], " |")
+				site = pywikibot.Site("test", "wikidata")
+
+				message_summary = u'Creating new software: ' + info['name']['excerpt']
+				test_name = "SALTbot test : "+info['name']['excerpt']
+				label_dict = {"en": test_name}
 
 				
-				print()
-				confirmation = input("CONFIRM (Y/N): ").strip()
+				if(upload):
+					new_software = pywikibot.ItemPage(site)
 
-				while(confirmation != "Y" and confirmation != "N"):
-					confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+					new_software.editLabels(labels=label_dict, summary=message_summary)
+
+					software_qnode = new_software.getID()
+				
+					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+				else:
+					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+			
+			
 
 
 		
-	elif(csvfile):
-		pass
+	elif(urlfile):
+		try:
+			f = open(urlfile,"r")
+		except:
+			sys.exit("SALTbot ERROR: urlfile is not a valid file")
+		
+		urls = f.readlines()
+
+		urls = [u.rstrip() for u in urls]
+
+
+		
+
+		for i in urls:
+			print()
+			operation = "URL: " + i
+			click.echo(click.style(operation, fg='yellow', bold=True))
+
+		
+			o=urlparse(i)
+			filename = o.path.replace("/", " ").split()[1] + ".json"
+			print("filename: ", filename)
+
+			print("somef describe -r ",i," -o "+filename+" -t 0.8")
+			os.system("somef describe -r "+i+" -o "+filename+" -t 0.8")
+
+			try:
+				f = open(filename,"r")
+			except:
+				print("SALTbot ERROR: no files")
+			
+			info = json.loads(f.read())
+			res = SALTbot(info, keyword, auto)
+
+
+			if(res == None):
+				print("No articles detected, SALTbot will not introduce anything to wikidata")
+			else: 
+				if(res[1]!=None):
+					aux = print_links(res[0], res[1], res[2])
+					if aux != None:
+						operation_list.append(aux)
+				else:
+					#create articulo
+					#operation_list.append(print_links(res[0], res[1], res[2]))
+					pass
+			
 
 	elif(jsondir):
+		
 
-		operation_list = []
 		alljsons = jsondir+'/*.json'
 
 		for jsonfile in glob.glob(alljsons):
+			
 			print()
-			print("--------------------------------------------FILE: ",jsonfile,"--------------------------------------------")
+			operation = "JSONFILE: " + jsonfile
+			click.echo(click.style(operation, fg='yellow', bold=True))
+
 			f = open(jsonfile, 'r')
 			info = json.loads(f.read())
 			res = SALTbot(info, keyword, auto)
@@ -676,9 +739,9 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 					#operation_list.append(print_links(res[0], res[1], res[2]))
 					pass
 		
-		if(operation_list!=[]):
+	if(operation_list!=[]):
 			print()
-			click.echo(click.style('SALTbot WILL INTRODUCE THIS STATEMENTS IN WIKIDATA', fg='red'))
+			click.echo(click.style('SALTbot WILL INTRODUCE THIS STATEMENTS IN WIKIDATA', fg='red', bold = True))
 			for i in operation_list:
 				for j in i:
 					if j[1]=='P921':
@@ -692,7 +755,38 @@ def main(readmedir, jsonfile, url, csvfile, jsondir, auto, keyword,  output):
 			confirmation = input("CONFIRM (Y/N): ").strip()
 
 			while(confirmation != "Y" and confirmation != "N"):
-				confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
+				confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
+
+			if(confirmation == "Y" and upload):
+				site = pywikibot.Site("test", "wikidata")
+				for i in operation_list:
+					for j in i:
+						if(j[1]=='P1343'):
+							article_repo = site.data_repository()
+							article_page = pywikibot.ItemPage(article_repo, qnode_software_test)
+							article_no_claim = article_page.get()
+							article_claim = pywikibot.Claim(article_repo, described_by_source_test) 				#Adding described_by_source property
+							article_target = pywikibot.ItemPage(article_repo, qnode_article_test) 			#linking article with software
+							article_claim.setTarget(article_target) 												#Set the target value in the local object.
+
+							message_summary = u'Adding claim described_by_source ' + str(qnode_article_test) +u' to entity ' + str(qnode_software_test)
+
+							print(message_summary)
+							article_page.addClaim(article_claim, summary=message_summary) 
+						
+						elif(j[1]=='P921'):
+
+							article_repo = site.data_repository()
+							article_page = pywikibot.ItemPage(article_repo, qnode_article_test)
+							article_no_claim = article_page.get()
+							article_claim = pywikibot.Claim(article_repo, main_subject_test) 				#Adding main_subject property
+							article_target = pywikibot.ItemPage(article_repo, qnode_software_test) 	#linking article with software
+							article_claim.setTarget(article_target) 												#Set the target value in the local object.
+
+							message_summary = u'Adding claim main_subject ' + str(qnode_software_test) +u' to entity ' + str(qnode_article_test)
+
+							print(message_summary)
+							article_page.addClaim(article_claim, summary=message_summary) 							#Inserting value with summary to article
 
 
 		
