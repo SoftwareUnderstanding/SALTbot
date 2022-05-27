@@ -137,18 +137,23 @@ def checkEnlaces(enlaces_Articulo, enlaces_Software, Qnode_a, Qnode_s):
 
 	enlace_articulo_software=0
 	enlace_software_articulo=0
+
+
+
 	try:
 		if Qnode_a in enlaces_Software[Qnode_s]:
-			enlace_articulo_software = 1
+			
+			enlace_software_articulo = 1
 
 	except:
 		pass
 	try:
 		if Qnode_s in enlaces_Articulo[Qnode_a]:
-			enlace_software_articulo = 1
+			enlace_articulo_software = 1
 	except:
 		pass
-
+	
+	
 	return (enlace_articulo_software, enlace_software_articulo)
 
 
@@ -431,6 +436,7 @@ def SALTbot(info, keyword, auto):
 
 
 			res = checkEnlaces(enlaces_articulo_software, enlaces_software_articulo, map_articulos[inp_articulo], map_softwares[inp_software])
+			
 		else:
 			res = (0,0)
 			inp_software = None
@@ -485,12 +491,14 @@ def cli():
 
 def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 
-	qnode_article_test = 'Q225100'
-	qnode_software_test = 'Q225099'
+	#Edit this values to the target nodes in wikidata
+	qnode_article_test = 'Q225102'
+	qnode_software_test = 'Q225101'
 	main_subject_test ='P96347'
 	described_by_source_test = 'P96348'
 	
-	upload = False
+	#Change this to true if you wish to edit wikidata
+	upload = True
 
 	operation_list = []
 
@@ -521,14 +529,14 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 
 
 		info = json.loads(f.read())
-		res = SALTbot(info, keyword, auto)
+		ret = SALTbot(info, keyword, auto)
 		
 		
-		if(res == None):
+		if(ret == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
 		else: 
-			if(res[1]!=None):
-				aux = print_links(res[0], res[1], res[2])
+			if(ret[1]!=None):
+				aux = print_links(ret[0], ret[1], ret[2])
 				if aux != None:
 					operation_list.append(aux)
 
@@ -540,16 +548,16 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 				label_dict = {"en": test_name}
 
 				
-				if(upload):
+				if(upload==True):
 					new_software = pywikibot.ItemPage(site)
 
 					new_software.editLabels(labels=label_dict, summary=message_summary)
 
 					software_qnode = new_software.getID()
 				
-					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (software_qnode, test_name), ret[2]))
 				else:
-					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (None, test_name), ret[2]))
 			
 			
 
@@ -567,15 +575,15 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 
 
 		info = json.loads(f.read())
-		res = SALTbot(info, keyword, auto)
+		ret = SALTbot(info, keyword, auto)
 		
 		
 		
-		if(res == None):
+		if(ret == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
 		else: 
-			if(res[1]!=(None, None)):
-				aux = print_links(res[0], res[1], res[2])
+			if(ret[1]!=(None, None)):
+				aux = print_links(ret[0], ret[1], ret[2])
 				
 				if aux != None:
 					operation_list.append(aux)
@@ -589,16 +597,16 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 				label_dict = {"en": test_name}
 
 				
-				if(upload):
+				if(upload == True):
 					new_software = pywikibot.ItemPage(site)
 
 					new_software.editLabels(labels=label_dict, summary=message_summary)
 
 					software_qnode = new_software.getID()
 				
-					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (software_qnode, test_name), ret[2]))
 				else:
-					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (None, test_name), ret[2]))
 			
 			
 
@@ -630,14 +638,14 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 				sys.exit("SALTbot ERROR: url is not a valid repository")
 
 		info = json.loads(f.read())
-		res = SALTbot(info, keyword, auto)
+		ret = SALTbot(info, keyword, auto)
 		
 		
-		if(res == None):
+		if(ret == None):
 			print("No articles detected, SALTbot will not introduce anything to wikidata")
 		else: 
-			if(res[1]!=None):
-				aux = print_links(res[0], res[1], res[2])
+			if(ret[1]!=None):
+				aux = print_links(ret[0], ret[1], ret[2])
 				if aux != None:
 					operation_list.append(aux)
 			else:
@@ -648,16 +656,16 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 				label_dict = {"en": test_name}
 
 				
-				if(upload):
+				if(upload == True):
 					new_software = pywikibot.ItemPage(site)
 
 					new_software.editLabels(labels=label_dict, summary=message_summary)
 
 					software_qnode = new_software.getID()
 				
-					operation_list.append(print_links(res[0], (software_qnode, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (software_qnode, test_name), ret[2]))
 				else:
-					operation_list.append(print_links(res[0], (None, test_name), res[2]))
+					operation_list.append(print_links(ret[0], (None, test_name), ret[2]))
 			
 			
 
@@ -695,19 +703,19 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 				print("SALTbot ERROR: no files")
 			
 			info = json.loads(f.read())
-			res = SALTbot(info, keyword, auto)
+			ret = SALTbot(info, keyword, auto)
 
 
-			if(res == None):
+			if(ret == None):
 				print("No articles detected, SALTbot will not introduce anything to wikidata")
 			else: 
-				if(res[1]!=None):
-					aux = print_links(res[0], res[1], res[2])
+				if(ret[1]!=None):
+					aux = print_links(ret[0], ret[1], ret[2])
 					if aux != None:
 						operation_list.append(aux)
 				else:
 					#create articulo
-					#operation_list.append(print_links(res[0], res[1], res[2]))
+					#operation_list.append(print_links(ret[0], ret[1], ret[2]))
 					pass
 			
 
@@ -724,19 +732,19 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 
 			f = open(jsonfile, 'r')
 			info = json.loads(f.read())
-			res = SALTbot(info, keyword, auto)
+			ret = SALTbot(info, keyword, auto)
 
 
-			if(res == None):
+			if(ret == None):
 				print("No articles detected, SALTbot will not introduce anything to wikidata")
 			else: 
-				if(res[1]!=None):
-					aux = print_links(res[0], res[1], res[2])
+				if(ret[1]!=None):
+					aux = print_links(ret[0], ret[1], ret[2])
 					if aux != None:
 						operation_list.append(aux)
 				else:
 					#create articulo
-					#operation_list.append(print_links(res[0], res[1], res[2]))
+					#operation_list.append(print_links(ret[0], ret[1], ret[2]))
 					pass
 		
 	if(operation_list!=[]):
@@ -757,7 +765,7 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 			while(confirmation != "Y" and confirmation != "N"):
 				confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
 
-			if(confirmation == "Y" and upload):
+			if(confirmation == "Y" and upload == True):
 				site = pywikibot.Site("test", "wikidata")
 				for i in operation_list:
 					for j in i:
@@ -801,134 +809,3 @@ def main(readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
 
 if(__name__=='__main__'):
 	main()
-'''
-
-				if(confirmation == "Y"):
-
-					site = pywikibot.Site("test", "wikidata")
-
-					article_qnode = dict_translated_entities[name][0]
-					software_qnode = dict_translated_entities[name][1]
-
-
-					if(res[0]==0):
-						print()
-
-						article_repo = site.data_repository()
-						article_page = pywikibot.ItemPage(article_repo, article_qnode)
-						article_no_claim = article_page.get()
-						article_claim = pywikibot.Claim(article_repo, main_subject_test_wikidata) 				#Adding main_subject property
-						article_target = pywikibot.ItemPage(article_repo, software_qnode) 	#linking article with software
-						article_claim.setTarget(article_target) 												#Set the target value in the local object.
-
-						message_summary = u'Adding claim main_subject ' + str(software_qnode) +u' to entity ' + str(article_qnode)
-
-						print(message_summary)
-						article_page.addClaim(article_claim, summary=message_summary) 							#Inserting value with summary to article
-
-					if(res[1]==0):
-						print()
-
-						software_repo = site.data_repository()
-						software_page = pywikibot.ItemPage(software_repo, software_qnode)
-						software_no_claim = software_page.get()
-						software_claim = pywikibot.Claim(software_repo, described_by_source_test_wikidata) 			#Adding described_by_source property
-						software_target = pywikibot.ItemPage(software_repo, article_qnode) 		#linking software to article
-						software_claim.setTarget(software_target)       												#Set the target value in the local object.
-
-						message_summary = u'Adding claim described_by_source ' + str(article_qnode) + u' to ' + str(software_qnode)
-
-						print(message_summary)
-
-						software_page.addClaim(software_claim, summary=message_summary) 							#Inserting value with summary to Q210194
-
-
-
-
-
-
-
-			else:
-
-				print("NO SOFTWARE PAGE DETECTED, SALTbot WILL CREATE A PAGE WITH:\n")
-				print("LABEL: ", name, "\n")
-				print("has_source_code_repository: ", info['codeRepository']['excerpt'])
-
-
-				print()
-
-				confirmation = input("CONFIRM (Y/N): ").strip()
-
-				while(confirmation != "Y" and confirmation != "N"):
-					confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
-
-
-				if(confirmation == "Y"):
-					site = pywikibot.Site("test", "wikidata")
-
-					message_summary = u'Creating new software: ' + name
-					test_name = "SALTbot test : "+name+" demostracion"
-					label_dict = {"en": test_name}
-
-					new_software = pywikibot.ItemPage(site)
-
-					new_software.editLabels(labels=label_dict, summary=message_summary)
-
-					software_qnode = new_software.getID()
-					article_qnode = dict_translated_entities[name][0]
-
-					print()
-					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", selected_article_qnode, " P921 ", software_qnode)
-					print("ARTICLE_SOFTWARE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", article_qnode, " ", main_subject_test_wikidata, " ", software_qnode)
-					print("SOFTWARE_ARTICLE_LINK: SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA: ", software_qnode," P1343 ", selected_article_qnode)
-					print("SOFTWARE_ARTICLE_LINK:SALTbot WILL INTRODUCE THIS STATEMENT IN WIKIDATA/TEST: ", software_qnode, " ", described_by_source_test_wikidata, " ", article_qnode)
-
-					print()
-					confirmation = input("CONFIRM (Y/N): ").strip()
-
-					while(confirmation != "Y" and confirmation != "N"):
-						confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()
-
-
-					if(confirmation == "Y"):
-
-
-						software_repo = site.data_repository()
-						software_page = pywikibot.ItemPage(software_repo, software_qnode)
-
-						software_no_claim = software_page.get()
-
-						software_claim = pywikibot.Claim(software_repo, has_source_repository_test_wikidata) 			#Adding described_by_source property
-						software_target = pywikibot.ItemPage(software_repo, info['codeRepository']['excerpt']) 		#linking software to article
-						software_claim.setTarget(software_target)
-
-						software_no_claim = software_page.get()
-
-						software_claim = pywikibot.Claim(software_repo, described_by_source_test_wikidata) 			#Adding described_by_source property
-						software_target = pywikibot.ItemPage(software_repo, article_qnode) 		#linking software to article
-						software_claim.setTarget(software_target)       												#Set the target value in the local object.
-
-
-
-						message_summary = u'Adding claim described_by_source ' + str(article_qnode) + u' and has_source_code_repository ' +info['codeRepository']['excerpt'] + u' to ' + str(software_qnode)
-
-						print(message_summary)
-
-						software_page.addClaim(software_claim, summary=message_summary)
-
-						article_repo = site.data_repository()
-						article_page = pywikibot.ItemPage(article_repo, article_qnode)
-						article_no_claim = article_page.get()
-						article_claim = pywikibot.Claim(article_repo, main_subject_test_wikidata) 				#Adding main_subject property
-						article_target = pywikibot.ItemPage(article_repo, software_qnode) 	#linking article with software
-						article_claim.setTarget(article_target) 												#Set the target value in the local object.
-
-						message_summary = u'Adding claim main_subject ' + str(software_qnode) +u' to entity ' + str(article_qnode)
-
-						print(message_summary)
-						article_page.addClaim(article_claim, summary=message_summary)
-
-
-
-
-'''
