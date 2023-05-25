@@ -5,59 +5,31 @@
 ## DESCRIPTION
 
   
-  This repository contains the implementation of a bot capable of linking Scientific Articles and their Software pages on Wikidata
+  This repository contains the implementation of a tool capable of linking Scientific Articles and their Software pages on Wikibase graphs
 
-## INSTALATION
+## INSTALLATION
 
-  It is required to have an environment with Python 3.9 
+  It is required to have an environment with at least Python 3.9
   
-  ### -SOMEF (https://github.com/KnowledgeCaptureAndDiscovery/somef) 
-  run:
+  1-. Clone repository
   
-    >pip install somef
+  2-. Install requirements
+  ```console
+  pip install -r requirements.txt
+  ```
   
-    >somef configure
-  
-  ### -PyYAML
-  run:
-   
-    >pip install pyyaml
-  
-  ### -BibTexParser
-  run:
-  
-    >pip install bibtexparser
-  
-  ### -CLICK
-  run:
-  
-    >pip install click
-  
-    >pip install click.opt.group
-  
-  ### -Pywikibot (https://github.com/wikimedia/pywikibot)
-  run:
-  
-    >git clone https://github.com/wikimedia/pywikibot
-  
-    >cd pywikibot
-  
-    >python pwb.py login.py
-  
-   **When propmted:**
-   
-   1-.Choose Wikidata (number 14) as family of sites
-   
-   2-.Choose test as the site of code we are working on
-   
-   3-.Introduce your Wikidata username
-   
-   4-.(OPTIONAL) Introduce your bot password. This allows to modify the permissions of Pywikibot. 
-        If introduced, you will not have to introduce your user password each time Pywikibot logs off. For creating one, go to: https://test.wikidata.org/wiki/Special:BotPasswords
-  
+ 
   
 ## USAGE
+ Run:
+ ```console
+ python SALTbot.py [ARGS]
+ ```
+ Use --help for more info
+ 
+ ## Anexo
+ ### Entorno local
+ el directorio local_env contiene ficheros para desplegar un wikibase local y popularlo con entidades de wikidata
+ 
 
-  ### **python PATH_TO_pwb.py SALTbot.py [ARGS]** 
   
-  Note: if you want to actually edit the test instance of wikidata, manually edit the values of the desired target qnodes (qnode_article_test, qnode_software_test) and properties (main_subject_test, described_by_source_test) to use, and change upload to True in SALTbot.py main.
