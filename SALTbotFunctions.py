@@ -29,29 +29,33 @@ def createSoftwareOperations(info, instanceOfPnode, describedBySourcePnode, arti
         resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
         softwareQnode = wbi_helpers.search_entities(search_string='free software')
         resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
-        print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
+        #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
         
     except Exception as e:
         print(e)
     
     #Optional properties
-    foundProps['codeRepository'] = wbi_helpers.search_entities(search_string='codeRepository', search_type='property')
-    foundProps['programmingLanguage'] = wbi_helpers.search_entities(search_string='programmingLanguage', search_type='property')
-    foundProps['downloadUrl'] = wbi_helpers.search_entities(search_string='downloadUrl', search_type='property')
+    foundProps['codeRepository'] = wbi_helpers.search_entities(search_string='code repository', search_type='property')
+    foundProps['programmingLanguage'] = wbi_helpers.search_entities(search_string='programming language', search_type='property')
+    foundProps['downloadUrl'] = wbi_helpers.search_entities(search_string='download url', search_type='property')
     #foundProps['dateCreated'] = wbi_helpers.search_entities(search_string='dateCreated', search_type='property')
     #foundProps['dateModified'] = wbi_helpers.search_entities(search_string='dateModified', search_type='property')
     foundProps['license'] = wbi_helpers.search_entities(search_string='license', search_type='property')
 
-    print(foundProps)
+    #print(foundProps)
 
     for prop in foundProps.keys():
         if foundProps[prop] != []:
             if prop == 'codeRepository':
-                resultOps.append(['statement',{'datatype':'URL', 's':info['name']['0']['result']['value'], 'p':foundProps[prop[0]], 'o':info['codeRepository']['0']['result']['value']}])
+                resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':foundProps[prop][0], 'o':info['code_repository'][0]['result']['value']}])
                
             if prop == 'programmingLanguage':
                 for language in info['programming_languages']:
-                    resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':foundProps[prop][0], 'o':language['value']}])
+                    try:
+                        Qnode_programming_language = wbi_helpers.search_entities(search_string=language['result']['value'])[0]
+                        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':foundProps[prop][0], 'o':Qnode_programming_language}])
+                    except:
+                        continue
             if prop == 'downloadUrl':
                 resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':foundProps[prop][0], 'o':info['download_url'][0]['result']['value']}])
             #if prop == 'dateCreated':
@@ -75,9 +79,11 @@ def defineOperations(info, article_links, software_links, mainSubjectPnode, desc
 
     if(article_links!={}):       
         click.echo(click.style('LINKING', fg='red', bold =True))
-        count=0
+        count=1
         
         click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
+        print('0 : SKIP')
+        map_articles.update({'0':'SKIP'})
         for i in article_links:
             print(count, ' : ', i)
             map_articles.update({str(count):i})
@@ -87,10 +93,13 @@ def defineOperations(info, article_links, software_links, mainSubjectPnode, desc
         
         while(inp_article not in map_articles):
             inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
-        
+        if inp_article == '0':
+            return []
         if software_links !={}:
-            count=0
+            count=1
             click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
+            print('0 : SKIP')
+            map_softwares.update({'0':'SKIP'})
             for i in software_links:
                 print(count, ' : ', i)
                 map_softwares.update({str(count):i})
@@ -100,6 +109,8 @@ def defineOperations(info, article_links, software_links, mainSubjectPnode, desc
         
             while(inp_software not in map_softwares):
                 inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()
+            if inp_software == '0':
+                return []
             operation_list = getRelations(operation_list, article_links,software_links,map_articles[inp_article],map_softwares[inp_software], mainSubjectPnode, describedBySourcePnode, wbi)
         else:
             aux_ops = createSoftwareOperations(info, instanceOfPnode, describedBySourcePnode, map_articles[inp_article], wbi)
@@ -113,17 +124,12 @@ def defineOperations(info, article_links, software_links, mainSubjectPnode, desc
 #TODO: write documentation
 #TODO: do the software existance comprobation before calling this function
 def createEmptySoftware(data, wbi):
-    item_wb = None
-    try:
-        item_qnode = wbi_helpers.search_entities(search_string=data['LABEL'], search_type='item')[0]
-        item_wb = wbi.item.get(entity_id=item_qnode)
-    except:
-        print('Creating software...')
-        item_wb = wbi.item.new()
-        item_wb.labels.set(language='en', value=data['LABEL'])
-        item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-        item_wb = item_wb.write() 
-        print('Software created as ', item_wb.id)
+    print('Creating software...')
+    item_wb = wbi.item.new()
+    item_wb.labels.set(language='en', value=data['LABEL'])
+    item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
+    item_wb = item_wb.write() 
+    print('Software created as ', item_wb.id)
     
     return item_wb
 
@@ -131,44 +137,56 @@ def createEmptySoftware(data, wbi):
 #TODO: write documentation
 #TODO: change the entity search for every statement
 #TODO: only works with statements of type Item -> needs to be working for URL and date as well
-def createStatement(data, wbi):
+def createStatement(data,last_software,info, wbi):
     try:
-        if data['s'][0]!='Q':
-            data['s'] =  wbi_helpers.search_entities(search_string=data['s'], search_type='item')[0]
-        elif data['o'][0]!='Q':    
-            data['o'] =  wbi_helpers.search_entities(search_string=data['o'], search_type='item')[0]
-        print('data after createStatements', data)
+        if data['s']==info['name'][0]['result']['value']:
+            data['s'] =  last_software.id
+        elif data['o'] ==   info['name'][0]['result']['value']:
+            data['o'] =  last_software.id
+        
         item_wb = wbi.item.get(entity_id=data['s'])
         statement_data = []
         statement_data.append(Item(value=data['o'], prop_nr=data['p']))
         item_wb.claims.add(statement_data)
         item_wb.write()
+        print('succesfully created statement: ', data)
     except Exception as e:
         print('statement ', data, 'could not be imported. Reason: ', e)
 
 #TODO:write documentation
 #TODO: check if software operations are created correctly    
 def uploadChanges(info, operation_list, wbi):
-    for operation in operation_list:
+    last_software = None
+
+    for operation in operation_list:    
         #print(operation)
         if operation[0]=='create':
-            createEmptySoftware(operation[1], wbi)
+            last_software = createEmptySoftware(operation[1], wbi)
            
         elif operation[0] == 'statement':
-            createStatement(operation[1], wbi)
+            createStatement(operation[1],last_software,info, wbi)
 
 #TODO:write documentation
 #TODO:check if statements are detected correctly here
 def getRelations(operation_list, article_links, software_links, Qnode_article, Qnode_software, mainSubjectPnode, describedBySourcePnode,  wbi):
-    
-    if Qnode_software not in article_links[Qnode_article]:
-        #if software == Qnode_software:
-        operation_list.append(['statement', {'datatype':'Item', 's': Qnode_article, 'p':mainSubjectPnode, 'o':Qnode_software}])
+    article_software_link = False
+    software_article_link = False
+
+    for software in article_links[Qnode_article]:
+        if software[0] == Qnode_software:
+            article_software_link = True
+  
 
         #print('no enlace articulo-software')
-    if Qnode_article not in software_links[Qnode_software]:
-        operation_list.append(['statement', {'datatype':'Item', 's':Qnode_software, 'p':describedBySourcePnode, 'o':Qnode_article}])
+    for article in software_links[Qnode_software]:
+        if article[0] == Qnode_article:
+            software_article_link = True
     
+    if article_software_link == False:
+        operation_list.append(['statement', {'datatype':'Item', 's': Qnode_article, 'p':mainSubjectPnode, 'o':Qnode_software}])
+    if software_article_link == False:
+        operation_list.append(['statement', {'datatype':'Item', 's':Qnode_software, 'p':describedBySourcePnode, 'o':Qnode_article}])
+
     return operation_list
 
 #Returns all entities related to entityQnode of class targetClass in the given wikibase
@@ -199,54 +217,56 @@ def getEntitiesByName(name, targetClass, instanceOf, wbi):
     return(entities)
     
 
-#info: json extracted with somef
 #returns all the article titles detected
+#info: json extracted with somef
 #TODO: change try catch workflow
 def parseTitles(info):
     parsedinfo = []
 
     # For each extraction technique
-    for i in info["citation"]:
+    if "citation" in info.keys():
+        for i in info["citation"]:
 
 
-        #If it is File Exploration or Regular expression
-        if(i["technique"] == "file_exploration" or i["technique"] == "regular_expression"):
+            #If it is File Exploration or Regular expression
+            if(i["technique"] == "file_exploration" or i["technique"] == "regular_expression"):
+                
             
-        
-            #try parsing to BIB
-            try:
-                parsedbib= bibtexparser.loads(i["result"]["value"])
-                parsedtitle = parsedbib.entries[0]["title"]
-                print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
-                parsedinfo.append(parsedtitle)
-            except Exception as e:
-                #print(e)
-            #try parsing to YAML
-            
+                #try parsing to BIB
                 try:
-                    parsedyaml = yaml.load(i["result"]["value"], Loader = SafeLoader)
-                    #print(parsedyaml.keys())
-                    if('preferred-citation' in parsedyaml.keys()):
-                        parsedtitle = parsedyaml['preferred-citation']['title']
-                    else:
-                        parsedtitle = parsedyaml["title"]
-                    #print(parsedyaml['preferred-citation']['title'])
-                    #print("yaml")
+                    parsedbib= bibtexparser.loads(i["result"]["value"])
+                    parsedtitle = parsedbib.entries[0]["title"]
                     print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
                     parsedinfo.append(parsedtitle)
                 except Exception as e:
-                    print(e)  
-                    
+                    #print(e)
+                #try parsing to YAML
+                
+                    try:
+                        parsedyaml = yaml.load(i["result"]["value"], Loader = SafeLoader)
+                        #print(parsedyaml.keys())
+                        if('preferred-citation' in parsedyaml.keys()):
+                            parsedtitle = parsedyaml['preferred-citation']['title']
+                        else:
+                            parsedtitle = parsedyaml["title"]
+                        #print(parsedyaml['preferred-citation']['title'])
+                        #print("yaml")
+                        print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
+                        parsedinfo.append(parsedtitle)
+                    except Exception as e:
+                        print(e)  
+                        
                 
 
     return parsedinfo
 
-#info: json extracted with somef, wbi: wbi object, 
-#articleQnode: the article Qnode in the target wikibase, 
-#softwareQnode: the software Qnode in target wikibase, 
+#info: json extracted with somef
+#wbi: wbi object with all the graph related info
+#articleQnode: the article Qnode in the target wikibase
+#softwareQnode: the software Qnode in target wikibase
 #instanceofPnode: the instance_of property pnode in target wikibase
 #TODO: change operation printing format
-def SALTbot(info, wbi, articleQnode, softwareQnode, instanceOfPnode, subclassOfPnode, mainSubjectPnode, describedBySourcePnode):
+def SALTbot(info, wbi, articleQnode, softwareQnode, instanceOfPnode, mainSubjectPnode, describedBySourcePnode):
 
     print("\n")
     click.echo(click.style('SEARCH', fg='red', bold=True))

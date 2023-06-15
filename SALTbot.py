@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import yaml
 from yaml.loader import SafeLoader
 
+
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 from datetime import datetime
@@ -17,62 +18,81 @@ from wikibaseintegrator.wbi_config import config as wbi_config
 from wikibaseintegrator import wbi_login
 from wikibaseintegrator import wbi_helpers
 
-import SALTbot2
+import SALTbotFunctions
 
 
 
-@click.group(context_settings={'help_option_names': ['-h', '--help']})
+#@click.group(context_settings={'help_option_names': ['-h', '--help']})
+@click.group()
 def cli():
-    print("SALTbot: Software and Article Linker Toolbot")
+    click.echo("SALTbot: Software and Article Linker Toolbot")
+
+
 
 
 @click.command()
+@click.option('-a', '--auto', help="Automatically configures SALTbot to target Wikidata", is_flag=True, default=True)
+def configure(auto):
+	"""Configure SALTbot"""
+	config = {}
+	config['USER'] = click.prompt("Wikibase user", default = "")
+	config['PASSWORD'] = click.prompt("Wikibase Password", default = "")
+
+	if(auto):
+		click.echo('Introduce the target wikibase data. If left blank, it will default to target Wikidata')
+		config['MEDIAWIKI_API_URL'] = click.prompt("MEDIAWIKI_API_URL", default = "")
+		config['SPARQL_ENDPOINT_URL'] = click.prompt("SPARQL_ENDPOINT_URL", default = "")
+		config['WIKIBASE_URL'] = click.prompt("WIKIBASE_URL", default = "")
+	else:
+		config['MEDIAWIKI_API_URL'] = None
+		config['SPARQL_ENDPOINT_URL'] = None
+		config['WIKIBASE_URL'] = None
+	
+	stream = open('config.yaml', 'w')
+	yaml.dump(config, stream)
+
+	click.secho(f"Success", fg="green")
+
+
+#@click.command(help='Run SALTbot')
+@click.command()
 @click.option('--auto', '-a', is_flag=True, help='Sets bot to auto mode. The bot will not ask for user confirmations and will only require supervision if one or more articles or software are found in Wikidata.')
-@click.option('--keyword', '-k', default = None, help = 'Keyword for searching in case the repository treatment found no articles or software on Wikidata.')
 @click.option('--output', '-o', default=None, type = click.Path(), help='If url is used, this will be the path of the metadata output produced by SOMEF.')
-
-
-
-
-#TODO: change this from flag to command
-@click.option('--target', is_flag=True, help='change the target wikibase instance')
-@click.option('--login', is_flag=True, help='Change the username and password credentials in the target wikibase')
-
 @optgroup.group('Input', cls=RequiredMutuallyExclusiveOptionGroup)
-@optgroup.option('--readmedir', '-rdir', type = click.Path(exists=True), help = 'Path to the target repository if the repository is local.')
 @optgroup.option('--url', '-u', help = 'URL of the remote target repository.')
 @optgroup.option('--urlfile','-ru', type = click.Path(exists=True), help='File with one or more url entries to be treated. SALTbot will analyze each individual url in succesion and introduce the links afterwards.')
 @optgroup.option('--jsonfile','-js', type = click.Path(exists=True), help='Path to the JSON extracted from the target repository with SOMEF.')
 @optgroup.option('--jsondir', '-rjs', type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF. SALTbot will analyze each individual json in succesion and introduce the links afterwards.')
+def run(jsonfile, url, urlfile, jsondir, auto,  output):
+	"""Run SALTbot"""
 
+	try:
+		stream = open('config.yaml', 'r')   
+		config_data = yaml.load(stream, Loader = SafeLoader)
+	except Exception as e:
+		print(e)
+		click.echo('SALTbot Error: Configuration file not found')
+		return
 
+	user = config_data['USER']
+	passw = config_data['PASSWORD']
 
-#TODO: remove upload flag
-#TODO: move target and login to config.yml
-#TODO: reactivate options for massive treatment
-def main(target, login, readmedir, jsonfile, url, urlfile, jsondir, auto, keyword,  output):
+	if config_data['MEDIAWIKI_API_URL']!='':
+		print(config_data['MEDIAWIKI_API_URL'])
+		wbi_config['MEDIAWIKI_API_URL'] = config_data['MEDIAWIKI_API_URL']
+	if config_data['SPARQL_ENDPOINT_URL']!='':
+		print(config_data['SPARQL_ENDPOINT_URL'])
+		wbi_config['SPARQL_ENDPOINT_URL'] = config_data['SPARQL_ENDPOINT_URL']
+	if config_data['WIKIBASE_URL']!='':
+		print(config_data['WIKIBASE_URL'])
+		wbi_config['WIKIBASE_URL'] = config_data['WIKIBASE_URL']
 
-	#Local wikibase configuration. Uncomment these lines and edit them to target other wikibases
-
-	#wbi_config['MEDIAWIKI_API_URL'] = 'http://localhost:80/api.php'
-	#wbi_config['SPARQL_ENDPOINT_URL'] = 'http://localhost:8834/proxy/wdqs/bigdata/namespace/wdq/sparql'
-	#wbi_config['WIKIBASE_URL'] = 'http://localhost:80'
-	
-	
-	user = ''
-	passw = '' 
-
-	
 
 	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+user+')'
-	
-	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:TrialAndError2)'
 	
 	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
 	
 	try:
-		wb_subclassOf_Pnode = wbi_helpers.search_entities(search_string='subclass of', search_type='property')[0]
-		print("subclass: ", wb_subclassOf_Pnode)
 		wb_instanceOf_Pnode = wbi_helpers.search_entities(search_string='instance of', search_type='property')[0]
 		print("instance: ",wb_instanceOf_Pnode)
 		wb_mainSubject_Pnode = wbi_helpers.search_entities(search_string='main subject', search_type='property')[0]
@@ -100,29 +120,6 @@ def main(target, login, readmedir, jsonfile, url, urlfile, jsondir, auto, keywor
 
 	operation_list = []
 
-	#TODO: move to config yaml
-	if(target):
-		wbi_config['MEDIAWIKI_API_URL'] = input("Introduce target's Mediawiki API URL: ").strip()
-		wbi_config['SPARQL_ENDPOINT_URL'] = input("Introduce target's SPARQL Endpoint URL: ").strip()
-		wbi_config['WIKIBASE_URL'] = input("Introduce target's Wikibase URL: ").strip()
-
-
-
-		wbi=WikibaseIntegrator()
-
-	#TODO: move to config yaml
-	if(login):
-		wikibase_user = input("Introduce wikibase username: ").strip()
-		wikibase_pwd = input("Introduce wikibase password: ").strip()
-
-
-		#change the USER_AGENT config parameter to edit the User-Agent header. See https://www.wikidata.org/wiki/Wikidata:Data_access for more info
-		wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+wikibase_user+')'
-
-	
-		wbi_login_instance = wbi_login.Clientlogin(user=wikibase_user, password=wikibase_pwd)
-		wbi = WikibaseIntegrator(login=wbi_login_instance)
-
 	if(jsonfile):
 
 		print()
@@ -135,7 +132,7 @@ def main(target, login, readmedir, jsonfile, url, urlfile, jsondir, auto, keywor
 
 
 		info = json.loads(f.read())
-		operation_list = SALTbot2.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_subclassOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+		operation_list = SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
 		
 
 		
@@ -164,23 +161,66 @@ def main(target, login, readmedir, jsonfile, url, urlfile, jsondir, auto, keywor
 				sys.exit("SALTbot ERROR: url is not a valid repository")
 
 		info = json.loads(f.read())
-		operation_list = SALTbot2.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_subclassOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+		operation_list = SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
 		
+	elif(urlfile):
+		try:
+			f = open(urlfile,"r")
+		except:
+			sys.exit("SALTbot ERROR: urlfile is not a valid file")
 		
+		urls = f.readlines()
+
+		urls = [u.rstrip() for u in urls]
+
+
+		
+
+		for i in urls:
+			print()
+			operation = "URL: " + i
+			click.echo(click.style(operation, fg='yellow', bold=True))
+
+		
+			o=urlparse(i)
+			filename = output + '/'+ o.path.replace("/", " ").split()[1] + ".json"
+			print("filename: ", filename)
+
+			print("somef describe -r ",i," -o "+filename+" -t 0.8")
+			os.system("somef describe -r "+i+" -o "+filename+" -t 0.8")
+
+			try:
+				f = open(filename,"r")
+			except:
+				print("SALTbot ERROR: no files")
+			
+			info = json.loads(f.read())
+			operation_list = operation_list + SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+				
+			
+
+	elif(jsondir):
+		
+
+		alljsons = jsondir+'/*.json'
+
+		for jsonfile in glob.glob(alljsons):
+			
+			print()
+			operation = "JSONFILE: " + jsonfile
+			click.echo(click.style(operation, fg='yellow', bold=True))
+
+			f = open(jsonfile, 'r')
+			info = json.loads(f.read())
+			operation_list = operation_list + SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
 					
 	if(operation_list!=[]):
 			print()
 			click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
 			for operation in operation_list:
 				print(operation)
-				#for j in i:
-				#	if j[1]=='P921':
-				#		print("| ARTICLE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : main_subject | SOFTWARE: ", j[2][0], " : ", j[2][1], " |")
-				#	elif j[1]=='P1343':
-				#		print("| SOFTWARE:  ", j[0][0]," : ", j[0][1], " | PROPERTY: ", j[1], " : described_by_source | ARTICLE: ", j[2][0], " : ", j[2][1], " |")
-
+				
 					
-#HACER EL TRATAMIENTO DE STATEMENTS COMO FUNCION
 			print()
 			confirmation = input("CONFIRM (Y/N): ").strip()
 
@@ -188,11 +228,13 @@ def main(target, login, readmedir, jsonfile, url, urlfile, jsondir, auto, keywor
 				confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
 
 			if(confirmation == "Y" and upload == True):
-				SALTbot2.uploadChanges(info, operation_list, wbi)
+				SALTbotFunctions.uploadChanges(info, operation_list, wbi)
 				
-	
+cli.add_command(configure)
+cli.add_command(run)
+
 
 
 
 if(__name__=='__main__'):
-	main()
+	cli()
