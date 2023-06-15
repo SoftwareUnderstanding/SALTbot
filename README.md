@@ -17,19 +17,43 @@
   ```console
   pip install -r requirements.txt
   ```
+  3-. Install and configure somef
+  https://github.com/KnowledgeCaptureAndDiscovery/somef
   
  
   
 ## USAGE
- Run:
+### Configure
+Before running SALTbot, you must first configure your login credentials and wikibase using the configure command
+```console
+python SALTbot.py configure
+```
+You can invoke this command using -a as argument to skip the Wikibase configuration and target Wikidata automatically 
+SALTbot will then prompt you for you login information and the required wikibase URLs. If left blank, the URLs will default to Wikidata's respective values
+An example of the Wikibase configuration using Wikidatas values would be the following
+
+```console
+MEDIAWIKI_API_URL = https://www.wikidata.org/w/api.php
+SPARQL_ENDPOINT_URL = https://query.wikidata.org/
+WIKIBASE_URL = https://www.wikidata.org
+```
+### Running
+Once configured, execute SALTbot using
+
+```console
+python SALTbot.py run  [ARGS]
+```
+
+ For more info, run:
  ```console
- python SALTbot.py [ARGS]
+ python SALTbot.py [COMMAND] --help
  ```
- Use --help for more info
+
  
- ## Anexo
- ### Entorno local
- el directorio local_env contiene ficheros para desplegar un wikibase local y popularlo con entidades de wikidata
+ ## Annex
+ ### local_env directory
+ In SALTbot/local_env, you can find scripts and documentation on how to create and populate your own local wikibase using docker
+ 
  
 
   
