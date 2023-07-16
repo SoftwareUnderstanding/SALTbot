@@ -91,26 +91,20 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+user+')'
 	
 	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
-	
+
+	#MANDATORY NODES (instance_of, main_subject, described_by_source, scientific article, software category, free software)
+	man_nodes = {}
 	try:
-		wb_instanceOf_Pnode = wbi_helpers.search_entities(search_string='instance of', search_type='property')[0]
-		print("instance: ",wb_instanceOf_Pnode)
-		wb_mainSubject_Pnode = wbi_helpers.search_entities(search_string='main subject', search_type='property')[0]
-		print("main subject: ", wb_mainSubject_Pnode)
-		wb_describedBySource_Pnode = wbi_helpers.search_entities(search_string='described by source', search_type='property')[0]
-		print("described by source: ",wb_describedBySource_Pnode)
-		wb_article_Qnode = wbi_helpers.search_entities(search_string='scholarly article')[0]
-		print("article: ", wb_article_Qnode)
-		wb_software_Qnode = wbi_helpers.search_entities(search_string='software category')[0]
-		print("software: ", wb_software_Qnode)
-
+		man_nodes = SALTbotFunctions.getMandatoryNodes(wbi)
 	except Exception as e:
-		print('SALTbot Error: one or more of the required entities and properties has not been found in the target wikibase')
-		print(e)
 		return
+	
 
-	
-	
+		
+
+	#software props
+	opt_nodes = {}
+	opt_nodes = SALTbotFunctions.getOptionalNodes(wbi)
 	
 	
 	
@@ -132,7 +126,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 
 		info = json.loads(f.read())
-		operation_list = SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
 		
 
 		
@@ -161,7 +155,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 				sys.exit("SALTbot ERROR: url is not a valid repository")
 
 		info = json.loads(f.read())
-		operation_list = SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
 		
 	elif(urlfile):
 		try:
@@ -195,7 +189,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 				print("SALTbot ERROR: no files")
 			
 			info = json.loads(f.read())
-			operation_list = operation_list + SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
 				
 			
 
@@ -212,7 +206,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 			f = open(jsonfile, 'r')
 			info = json.loads(f.read())
-			operation_list = operation_list + SALTbotFunctions.SALTbot(info, wbi, wb_article_Qnode, wb_software_Qnode, wb_instanceOf_Pnode, wb_mainSubject_Pnode, wb_describedBySource_Pnode)
+			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
 					
 	if(operation_list!=[]):
 			print()
