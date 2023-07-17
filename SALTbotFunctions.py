@@ -199,12 +199,16 @@ def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, 
 
 def createEmptySoftware(data, wbi):
     print('Creating software...')
-    item_wb = wbi.item.new()
-    item_wb.labels.set(language='en', value=data['LABEL'])
-    item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-    item_wb = item_wb.write() 
-    print('Software created as ', item_wb.id)
-    
+    try:
+        helper = wbi_helpers.search_entities(search_string=data['LABEL'], search_type='item')[0]
+        print(helper)
+        item_wb = wbi.item.get(entity_id = helper)
+    except:
+        item_wb = wbi.item.new()
+        item_wb.labels.set(language='en', value=data['LABEL'])
+        item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
+        item_wb = item_wb.write() 
+        print('Software created as ', item_wb.id)
     return item_wb
 
 
