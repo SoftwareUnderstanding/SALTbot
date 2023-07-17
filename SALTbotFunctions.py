@@ -10,6 +10,7 @@ from wikibaseintegrator import wbi_login
 from wikibaseintegrator import wbi_helpers
 from wikibaseintegrator.datatypes import ExternalID, Item, String, URL, Quantity, Property, CommonsMedia, GlobeCoordinate
 from wikibaseintegrator.models import Qualifiers
+from wikibaseintegrator.wbi_enums import ActionIfExists
 
 import time
 import json
@@ -66,7 +67,8 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     #Mandatory properties
     try:
         resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
-        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['free software'], 'qualifiers':None}])
+        qualifiers = Qualifiers()
+        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['free software'], 'qualifiers':qualifiers}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
         
     except Exception as e:
@@ -74,13 +76,13 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     
     
     for prop in opt_nodes.keys():
-        
+        qualifiers = Qualifiers()
         if opt_nodes[prop] != []:
             if prop == 'code repository':
                 
-                qualifiers = None
+                qualifiers = Qualifiers()
                 if opt_nodes['web interface software']!=[] and opt_nodes['version control system']!=[] and opt_nodes['Git']!=[] and opt_nodes['GitHub'] !=[]:
-                    qualifiers = Qualifiers()
+
                     qualifiers.add(Item(value=opt_nodes['Git'][0], prop_nr=opt_nodes['version control system'][0]))
                     qualifiers.add(Item(value=opt_nodes['GitHub'][0], prop_nr=opt_nodes['web interface software'][0]))
                 resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':info['code_repository'][0]['result']['value'], 'qualifiers':qualifiers}])
@@ -106,7 +108,7 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
                     if dic_language[lang]/size > 0.33:
                         try:
                             Qnode_programming_language = wbi_helpers.search_entities(search_string=lang)[0]
-                            resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':Qnode_programming_language, 'qualifiers':None}])
+                            resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':Qnode_programming_language, 'qualifiers':qualifiers}])
                         except:
                             continue
             if prop == 'license':
@@ -117,11 +119,11 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
                         #print('keys: ', licenses.keys())
                         if l['result']['spdx_id'] in opt_nodes['licenses'].keys():
                             
-                            resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':opt_nodes['licenses'][l['result']['spdx_id']], 'qualifiers':None}])
+                            resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':opt_nodes['licenses'][l['result']['spdx_id']], 'qualifiers':qualifiers}])
                     except:
                         continue           
             if prop == 'download url':
-                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':info['download_url'][0]['result']['value'], 'qualifiers':None}])
+                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':info['download_url'][0]['result']['value'], 'qualifiers':qualifiers}])
             #if prop == 'dateCreated':
             #    resultOps.append(['statement','Point in time' ['SOFTWARE', foundProps[prop][0], info['date_created'][0]['result']['value']]])
             #if prop == 'dateModified':
@@ -130,7 +132,8 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
             #    resultOps.append(['statement', 'Item', ['SOFTWARE', foundProps[prop][0], info['license'][0]['result']['value']]])
             #except Exception as e:
             #    print(e)
-    resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':articleQnode, 'qualifiers':None}])
+    qualifiers = Qualifiers()
+    resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':articleQnode, 'qualifiers':qualifiers}])
     #print(resultOps)
     return resultOps
 
@@ -140,8 +143,8 @@ def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, 
     map_articles = {}
     map_softwares = {}
 
-    print('article links: ', article_links)
-    print('software links: ', software_links)
+    #print('article links: ', article_links)
+    #print('software links: ', software_links)
 
 
     if(article_links!={}):       
@@ -206,34 +209,38 @@ def createEmptySoftware(data, wbi):
 
 
 
-def createStatement(data,last_software,info, wbi):
+def createStatement(data,last_software,subject_map,info, wbi):
     try:
         if data['s']==info['name'][0]['result']['value']:
             data['s'] =  last_software.id
         elif data['o'] ==   info['name'][0]['result']['value']:
             data['o'] =  last_software.id
         
-        item_wb = wbi.item.get(entity_id=data['s'])
+        if data['s'] not in subject_map.keys():
+            item_wb = wbi.item.get(entity_id=data['s'])
+            subject_map.update({item_wb.id:item_wb})
         if data['datatype'] == 'Item':
-            item_wb.claims.add(Item(value=data['o'], prop_nr=data['p'], qualifiers = data['qualifiers']))
+            subject_map[data['s']].claims.add(Item(value=data['o'], prop_nr=data['p']),action_if_exists = ActionIfExists.FORCE_APPEND)
         elif data['datatype'] == 'URL':
-            item_wb.claims.add(URL(value=data['o'], prop_nr=data['p'], qualifiers = data['qualifiers']))
-            #item_wb.claims.add(URL)
-        item_wb.write()
-        print('succesfully created statement: ', data)
+            subject_map[data['s']].claims.add(URL(value=data['o'], prop_nr=data['p'], qualifiers=data['qualifiers']), action_if_exists = ActionIfExists.FORCE_APPEND)
+
     except Exception as e:
         print('statement ', data, 'could not be imported. Reason: ', e)
 
 
 def uploadChanges(info, operation_list, wbi):
     last_software = None
+    subject_map = {}
     for operation in operation_list:    
         #print(operation)
         if operation[0]=='create':
             last_software = createEmptySoftware(operation[1], wbi)
+            subject_map.update({last_software.id:last_software}) 
            
         elif operation[0] == 'statement':
-            createStatement(operation[1],last_software,info, wbi)
+            createStatement(operation[1],last_software,subject_map, info, wbi)
+    for entity in subject_map.keys():
+        subject_map[entity].write()
 
 def getRelations(operation_list, article_links, software_links, Qnode_article, Qnode_software, man_nodes, results,  wbi):
     article_software_link = False

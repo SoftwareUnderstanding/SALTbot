@@ -229,7 +229,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 				SALTbotFunctions.uploadChanges(info, operation_list, wbi)
 
 	result_dump = open('results.txt', 'w')
-	result_dump.write(results)
+	for i in results:
+		result_dump.write(str(i)+':'+str(results[i])+'\n')
 	result_dump.close()	
 
 cli.add_command(configure)
