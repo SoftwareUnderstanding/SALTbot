@@ -114,6 +114,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	operation_list = []
 
+	results = {}
+
 	if(jsonfile):
 
 		print()
@@ -126,7 +128,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 
 		info = json.loads(f.read())
-		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
+		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
+		#print('results final', results)
 		
 
 		
@@ -155,7 +158,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 				sys.exit("SALTbot ERROR: url is not a valid repository")
 
 		info = json.loads(f.read())
-		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
+		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
+		#print('results final', results)
 		
 	elif(urlfile):
 		try:
@@ -189,7 +193,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 				print("SALTbot ERROR: no files")
 			
 			info = json.loads(f.read())
-			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
+			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
 				
 			
 
@@ -206,7 +210,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 			f = open(jsonfile, 'r')
 			info = json.loads(f.read())
-			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes)
+			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
 					
 	if(operation_list!=[]):
 			print()
@@ -223,7 +227,11 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 			if(confirmation == "Y" and upload == True):
 				SALTbotFunctions.uploadChanges(info, operation_list, wbi)
-				
+
+	result_dump = open('results.txt', 'w')
+	result_dump.write(results)
+	result_dump.close()	
+
 cli.add_command(configure)
 cli.add_command(run)
 

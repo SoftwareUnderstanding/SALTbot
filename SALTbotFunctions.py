@@ -135,10 +135,13 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     return resultOps
 
 #TODO:change to man_nodes
-def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, wbi):
+def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, results, wbi):
     operation_list = []
     map_articles = {}
     map_softwares = {}
+
+    print('article links: ', article_links)
+    print('software links: ', software_links)
 
 
     if(article_links!={}):       
@@ -158,7 +161,10 @@ def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, 
         while(inp_article not in map_articles):
             inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
         if inp_article == '0':
+            results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
             return []
+        else:
+            results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
         if software_links !={}:
             count=1
             click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
@@ -175,14 +181,17 @@ def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, 
                 inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()
             if inp_software == '0':
                 return []
-            operation_list = getRelations(operation_list, article_links,software_links,map_articles[inp_article],map_softwares[inp_software],man_nodes, wbi)
+            else:
+                results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
+
+            operation_list = getRelations(operation_list, article_links,software_links,map_articles[inp_article],map_softwares[inp_software],man_nodes, results[info['code_repository'][0]['result']['value']], wbi)
         else:
             aux_ops = createSoftwareOperations(info,map_articles[inp_article], man_nodes, opt_nodes, wbi)
             for i in aux_ops:
                 operation_list.append(i)
             operation_list.append(['statement', {'datatype':'Item', 's':map_articles[inp_article], 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
             
-            
+    #print('results en operations', results)
     return operation_list
 
 def createEmptySoftware(data, wbi):
@@ -218,7 +227,6 @@ def createStatement(data,last_software,info, wbi):
 
 def uploadChanges(info, operation_list, wbi):
     last_software = None
-
     for operation in operation_list:    
         #print(operation)
         if operation[0]=='create':
@@ -227,7 +235,7 @@ def uploadChanges(info, operation_list, wbi):
         elif operation[0] == 'statement':
             createStatement(operation[1],last_software,info, wbi)
 
-def getRelations(operation_list, article_links, software_links, Qnode_article, Qnode_software, man_nodes,  wbi):
+def getRelations(operation_list, article_links, software_links, Qnode_article, Qnode_software, man_nodes, results,  wbi):
     article_software_link = False
     software_article_link = False
 
@@ -246,6 +254,10 @@ def getRelations(operation_list, article_links, software_links, Qnode_article, Q
     if software_article_link == False:
         operation_list.append(['statement', {'datatype':'Item', 's':Qnode_software, 'p':man_nodes['described by source'], 'o':Qnode_article}])
 
+    results['article-software-link'] = article_software_link
+    results['software-article-link'] = software_article_link
+
+    #print('results en get relations:', results)
     return operation_list
 
 #Returns all entities related to entityQnode of class targetClass in the given wikibase
@@ -266,7 +278,7 @@ def getEntitiesByName(name, targetClass, man_nodes, wbi):
     entities={}
 
     results_wbi_helper = wbi_helpers.search_entities(search_string=name, dict_result=True, search_type='item')
-
+    #print(results_wbi_helper)
     for i in results_wbi_helper:      
         query = '''ASK {wd:'''+i['id']+''' wdt:'''+man_nodes['instance of']+'''+ wd:'''+targetClass+'''}'''
         match = wbi_helpers.execute_sparql_query(query)
@@ -334,8 +346,8 @@ def parseTitles(info):
                         print(e)  
                         
                 
-    print('authors:', authors)
-    return parsedinfo, authors
+    #print('authors:', authors)
+    return parsedinfo
 
 #info: json extracted with somef
 #wbi: wbi object with all the graph related info
@@ -343,7 +355,7 @@ def parseTitles(info):
 #softwareQnode: the software Qnode in target wikibase
 #instanceofPnode: the instance_of property pnode in target wikibase
 #TODO: change operation printing format
-def SALTbot(wbi, info, man_nodes, opt_nodes):
+def SALTbot(wbi, info, man_nodes, opt_nodes, results):
 
     print("\n")
     click.echo(click.style('SEARCH', fg='red', bold=True))
@@ -355,12 +367,15 @@ def SALTbot(wbi, info, man_nodes, opt_nodes):
 
     parsedTitles = parseTitles(info)
 
+    results.update({info['code_repository'][0]['result']['value']:{'repo-article':[], 'article':None, 'software':None, 'article-software-link':False, 'software-article-link':False}})
+
     if(parsedTitles == []):
         print("NO DETECTED TITLES")
     else:   
         for title in parsedTitles:       
             articles['TITLE EXTRACTION'].update(getEntitiesByName(title,man_nodes['scholarly article'], man_nodes, wbi))
             softwares['TITLE EXTRACTION'].update(getEntitiesByName(title,man_nodes['software category'], man_nodes, wbi))
+            results[info['code_repository'][0]['result']['value']]['repo-article'].append(title)
             
     name = info['name'][0]['result']['value']
 
@@ -373,7 +388,19 @@ def SALTbot(wbi, info, man_nodes, opt_nodes):
     articles = articles['REPO NAME'] | articles['TITLE EXTRACTION']
     softwares = softwares['REPO NAME'] | softwares['TITLE EXTRACTION']
 
-    
+    softwares_aux = None
+    for i in softwares:
+        if opt_nodes['code repository'] != []:
+            if opt_nodes['code repository'][0] in softwares[i]['claims'].keys():
+                for repo in softwares[i]['claims'][opt_nodes['code repository'][0]]:
+                    if repo['mainsnak']['datavalue']['value'] == info['code_repository'][0]['result']['value']:
+                        softwares_aux = {i:softwares[i]}
+                        
+                        break
+       
+
+    if softwares_aux != None:
+        softwares = softwares_aux
     print("\n")
     click.echo(click.style('RESULTS', bold = True))
 
@@ -407,8 +434,8 @@ def SALTbot(wbi, info, man_nodes, opt_nodes):
             print('SOFTWARE [', i, ':', softwares[i]['labels']['en']['value'], '] IS LINKED WITH ARTICLE [', j[0], ':', j[1], '] THROUGH PROPERTY [', j[2], ']')
 
 
-
-    operation_list = defineOperations(info, article_links, software_links, man_nodes, opt_nodes, wbi)
+    
+    operation_list = defineOperations(info, article_links, software_links, man_nodes, opt_nodes, results, wbi)
 
         
     return operation_list
