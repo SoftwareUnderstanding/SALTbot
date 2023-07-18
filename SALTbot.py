@@ -175,7 +175,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 
 		
-		count_tratados = 0
+		
 		for i in urls:
 			print()
 			operation = "URL: " + i
@@ -197,11 +197,9 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			info = json.loads(f.read())
 			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
 			#print(operation_list)
-			count_tratados = count_tratados + 1
-			if count_tratados % 10 == 0:
+			if len(operation_list) > 10:
 				SALTbotFunctions.executeOperations(operation_list, wbi)
 				operation_list = []
-
 
 			
 
