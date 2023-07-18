@@ -14,6 +14,7 @@ from wikibaseintegrator.wbi_enums import ActionIfExists
 
 import time
 import json
+import re
 
 
 import click
@@ -213,11 +214,11 @@ def createEmptySoftware(data, wbi):
 
 
 
-def createStatement(data,last_software,subject_map,info, wbi):
+def createStatement(data,last_software,subject_map, wbi):
     try:
-        if data['s']==info['name'][0]['result']['value']:
+        if not re.search("Q\d+", data['s']):
             data['s'] =  last_software.id
-        elif data['o'] ==   info['name'][0]['result']['value']:
+        elif not re.search("Q\d+", data['o']):
             data['o'] =  last_software.id
         
         if data['s'] not in subject_map.keys():
@@ -232,7 +233,25 @@ def createStatement(data,last_software,subject_map,info, wbi):
         print('statement ', data, 'could not be imported. Reason: ', e)
 
 
-def uploadChanges(info, operation_list, wbi):
+def executeOperations(operation_list, wbi):
+    
+    click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
+    for operation in operation_list:
+        if operation[0] == 'create':
+            print('CREATE SOFTWARE [', operation[1]['LABEL'], '] WITH DESCRIPTION [', operation[1]['DESCRIPTION'],']')
+        if operation[0] == 'statement':
+            print('CREATE STATEMENT [', operation[1]['s'],' ',operation[1]['p'],' ',operation[1]['o'],'] OF TYPE [', operation[1]['datatype'], ']')
+    
+    confirmation = input("CONFIRM (Y/N): ").strip()
+            
+    while(confirmation != "Y" and confirmation != "N"):
+        confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
+            
+    if(confirmation == "Y"):
+        uploadChanges(operation_list, wbi)
+
+
+def uploadChanges(operation_list, wbi):
     last_software = None
     subject_map = {}
     for operation in operation_list:    
@@ -242,7 +261,7 @@ def uploadChanges(info, operation_list, wbi):
             subject_map.update({last_software.id:last_software}) 
            
         elif operation[0] == 'statement':
-            createStatement(operation[1],last_software,subject_map, info, wbi)
+            createStatement(operation[1],last_software,subject_map, wbi)
     for entity in subject_map.keys():
         subject_map[entity].write()
 

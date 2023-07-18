@@ -130,7 +130,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 		info = json.loads(f.read())
 		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
 		#print('results final', results)
-		
+		SALTbotFunctions.executeOperations(operation_list, wbi)
 
 		
 	elif(url):
@@ -159,6 +159,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		info = json.loads(f.read())
 		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
+
+		SALTbotFunctions.executeOperations(operation_list, wbi)
 		#print('results final', results)
 		
 	elif(urlfile):
@@ -173,7 +175,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 
 		
-
+		count_tratados = 0
 		for i in urls:
 			print()
 			operation = "URL: " + i
@@ -194,7 +196,13 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			
 			info = json.loads(f.read())
 			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
-				
+			#print(operation_list)
+			count_tratados = count_tratados + 1
+			if count_tratados % 10 == 0:
+				SALTbotFunctions.executeOperations(operation_list, wbi)
+				operation_list = []
+
+
 			
 
 	elif(jsondir):
@@ -202,6 +210,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		alljsons = jsondir+'/*.json'
 
+	
 		for jsonfile in glob.glob(alljsons):
 			
 			print()
@@ -211,22 +220,12 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			f = open(jsonfile, 'r')
 			info = json.loads(f.read())
 			operation_list = operation_list + SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
-					
-	if(operation_list!=[]):
-			print()
-			click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
-			for operation in operation_list:
-				print(operation)
-				
-					
-			print()
-			confirmation = input("CONFIRM (Y/N): ").strip()
 
-			while(confirmation != "Y" and confirmation != "N"):
-				confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
-
-			if(confirmation == "Y" and upload == True):
-				SALTbotFunctions.uploadChanges(info, operation_list, wbi)
+			if len(operation_list) > 10:
+				SALTbotFunctions.executeOperations(operation_list, wbi)
+				operation_list = []
+	
+	
 
 	result_dump = open('results.txt', 'w')
 	for i in results:
