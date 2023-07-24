@@ -116,6 +116,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	results = {}
 
+	result_dump = open('results.txt', 'a')
+
 	if(jsonfile):
 
 		print()
@@ -130,8 +132,10 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 		info = json.loads(f.read())
 		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
 		#print('results final', results)
-		SALTbotFunctions.executeOperations(operation_list, wbi)
-
+		if len(operation_list) > 1:
+			SALTbotFunctions.executeOperations(operation_list, wbi)
+			for i in results:
+				result_dump.write(str(i)+':'+str(results[i])+'\n')
 		
 	elif(url):
 
@@ -159,9 +163,11 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		info = json.loads(f.read())
 		operation_list = SALTbotFunctions.SALTbot(wbi, info, man_nodes, opt_nodes, results)
-
-		SALTbotFunctions.executeOperations(operation_list, wbi)
+		if len(operation_list) > 1:
+			SALTbotFunctions.executeOperations(operation_list, wbi)
 		#print('results final', results)
+			for i in results:
+				result_dump.write(str(i)+':'+str(results[i])+'\n')
 		
 	elif(urlfile):
 		try:
@@ -183,10 +189,13 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		
 			o=urlparse(i)
-			filename = output + '/'+ o.path.replace("/", " ").split()[1] + ".json"
-			print("filename: ", filename)
 
-			print("somef describe -r ",i," -o "+filename+" -t 0.8")
+			
+			if(output):
+				filename = output + o.path.replace("/", " ").split()[1] + ".json"
+			else:
+				filename = o.path.replace("/", " ").split()[1] + ".json"
+		
 			os.system("somef describe -r "+i+" -o "+filename+" -t 0.8")
 
 			try:
@@ -200,7 +209,14 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			if len(operation_list) > 10:
 				SALTbotFunctions.executeOperations(operation_list, wbi)
 				operation_list = []
-
+				for i in results:
+					result_dump.write(str(i)+':'+str(results[i])+'\n')
+				results = {}
+		
+		if operation_list != []:
+			SALTbotFunctions.executeOperations(operation_list, wbi)
+			for i in results:
+				result_dump.write(str(i)+':'+str(results[i])+'\n')
 			
 
 	elif(jsondir):
@@ -222,12 +238,15 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			if len(operation_list) > 10:
 				SALTbotFunctions.executeOperations(operation_list, wbi)
 				operation_list = []
-	
-	
+				for i in results:
+					result_dump.write(str(i)+':'+str(results[i])+'\n')
+				results = {}
 
-	result_dump = open('results.txt', 'w')
-	for i in results:
-		result_dump.write(str(i)+':'+str(results[i])+'\n')
+		if operation_list != []:
+			SALTbotFunctions.executeOperations(operation_list, wbi)
+			for i in results:
+				result_dump.write(str(i)+':'+str(results[i])+'\n')
+		
 	result_dump.close()	
 
 cli.add_command(configure)

@@ -16,11 +16,19 @@ import time
 import json
 import re
 
-
+import pandas as pd
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
+def getCorrectQnode(name, Qnodes):
+    result = None
 
+    for i in Qnodes:
+        if i['label'] == name:
+            result = i['id']
+
+    return result
+    
 def getOptionalNodes(wbi):
     opt_nodes = {}
 
@@ -32,14 +40,16 @@ def getOptionalNodes(wbi):
         qnode_license = urlparse(i['item']['value']).path.replace("/", " ").split()[1]
         licenses.update({i['spdx']['value']:qnode_license})
     opt_nodes['licenses'] = licenses
-    opt_nodes['code repository'] = wbi_helpers.search_entities(search_string='code repository', search_type='property')
-    opt_nodes['programming language'] = wbi_helpers.search_entities(search_string='programming language', search_type='property')
-    opt_nodes['download url'] = wbi_helpers.search_entities(search_string='download url', search_type='property')
-    opt_nodes['license'] = wbi_helpers.search_entities(search_string='license', search_type='property')
-    opt_nodes['version control system'] = wbi_helpers.search_entities(search_string='version control system', search_type='property')
-    opt_nodes['web interface software'] = wbi_helpers.search_entities(search_string='web interface software', search_type='property')
-    opt_nodes['Git'] = wbi_helpers.search_entities(search_string='Git', search_type='item')
-    opt_nodes['GitHub'] = wbi_helpers.search_entities(search_string='GitHub', search_type='item')
+
+    
+    opt_nodes['code repository'] = getCorrectQnode('source code repository URL', wbi_helpers.search_entities(search_string='source code repository URL', dict_result = True,search_type='property'))
+    opt_nodes['programming language'] = getCorrectQnode('programmed in', wbi_helpers.search_entities(search_string='programming language', dict_result = True,search_type='property'))
+    opt_nodes['download url'] = getCorrectQnode('download link', wbi_helpers.search_entities(search_string='download url', dict_result = True,search_type='property'))
+    opt_nodes['license'] = getCorrectQnode('copyright license', wbi_helpers.search_entities(search_string='license', dict_result = True,search_type='property'))
+    opt_nodes['version control system'] = getCorrectQnode('version control system', wbi_helpers.search_entities(search_string='version control system', dict_result = True,search_type='property'))
+    opt_nodes['web interface software'] = getCorrectQnode('web interface software', wbi_helpers.search_entities(search_string='web interface software', dict_result = True,search_type='property'))
+    opt_nodes['Git'] = getCorrectQnode('Git',wbi_helpers.search_entities(search_string='Git', dict_result=True, search_type='item'))
+    opt_nodes['GitHub'] = getCorrectQnode('GitHub',wbi_helpers.search_entities(search_string='GitHub', dict_result = True, search_type='item'))
 
     return opt_nodes
     
@@ -48,12 +58,15 @@ def getOptionalNodes(wbi):
 def getMandatoryNodes(wbi):
     prop_map = {}
     try:
-        prop_map['instance of'] = wbi_helpers.search_entities(search_string='instance of', search_type='property')[0]	
-        prop_map['main subject'] = wbi_helpers.search_entities(search_string='main subject', search_type='property')[0]	
-        prop_map['described by source'] = wbi_helpers.search_entities(search_string='described by source', search_type='property')[0]
-        prop_map['scholarly article'] = wbi_helpers.search_entities(search_string='scholarly article')[0]	
-        prop_map['software category'] = wbi_helpers.search_entities(search_string='software category')[0]
-        prop_map['free software'] = wbi_helpers.search_entities(search_string='free software')[0]
+
+        prop_map['instance of'] = getCorrectQnode('instance of', wbi_helpers.search_entities(search_string='instance of', dict_result = True,search_type='property'))
+        prop_map['main subject'] = getCorrectQnode('main subject', wbi_helpers.search_entities(search_string='main subject', dict_result = True,search_type='property'))	
+        prop_map['described by source'] = getCorrectQnode('described by source', wbi_helpers.search_entities(search_string='described by source', dict_result = True,search_type='property'))
+        prop_map['scholarly article'] = getCorrectQnode('scholarly article', wbi_helpers.search_entities(search_string='scholarly article', dict_result = True,search_type='item'))	
+        prop_map['software category'] = getCorrectQnode('software category', wbi_helpers.search_entities(search_string='software category', dict_result = True,search_type='item'))
+        prop_map['free software'] = getCorrectQnode('free software', wbi_helpers.search_entities(search_string='free software', dict_result = True,search_type='item'))
+
+        
     except Exception as e:
         print('SALTbot Error: one or more of the required entities and properties has not been found in the target wikibase')
         print(e)
@@ -78,15 +91,16 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     
     for prop in opt_nodes.keys():
         qualifiers = Qualifiers()
-        if opt_nodes[prop] != []:
+        if opt_nodes[prop] != None:
             if prop == 'code repository':
                 
                 qualifiers = Qualifiers()
-                if opt_nodes['web interface software']!=[] and opt_nodes['version control system']!=[] and opt_nodes['Git']!=[] and opt_nodes['GitHub'] !=[]:
+                if opt_nodes['web interface software']!=None and opt_nodes['version control system']!=None and opt_nodes['Git']!=None and opt_nodes['GitHub'] !=None:
 
-                    qualifiers.add(Item(value=opt_nodes['Git'][0], prop_nr=opt_nodes['version control system'][0]))
-                    qualifiers.add(Item(value=opt_nodes['GitHub'][0], prop_nr=opt_nodes['web interface software'][0]))
-                resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':info['code_repository'][0]['result']['value'], 'qualifiers':qualifiers}])
+                    qualifiers.add(Item(value=opt_nodes['Git'], prop_nr=opt_nodes['version control system']))
+                    qualifiers.add(Item(value=opt_nodes['GitHub'], prop_nr=opt_nodes['web interface software']))
+
+                resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':info['code_repository'][0]['result']['value'], 'qualifiers':qualifiers}])
                
             if prop == 'programming language':
                 dic_language = {}
@@ -108,8 +122,9 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
                 for lang in dic_language:
                     if dic_language[lang]/size > 0.33:
                         try:
-                            Qnode_programming_language = wbi_helpers.search_entities(search_string=lang)[0]
-                            resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':Qnode_programming_language, 'qualifiers':qualifiers}])
+                            Qnode_programming_language = getCorrectQnode(lang, wbi_helpers.search_entities(search_string=lang, dict_result = True))
+                            if Qnode_programming_language != None:
+                                resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':Qnode_programming_language, 'qualifiers':qualifiers}])
                         except:
                             continue
             if prop == 'license':
@@ -120,11 +135,11 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
                         #print('keys: ', licenses.keys())
                         if l['result']['spdx_id'] in opt_nodes['licenses'].keys():
                             
-                            resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':opt_nodes['licenses'][l['result']['spdx_id']], 'qualifiers':qualifiers}])
+                            resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':opt_nodes['licenses'][l['result']['spdx_id']], 'qualifiers':qualifiers}])
                     except:
                         continue           
             if prop == 'download url':
-                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop][0], 'o':info['download_url'][0]['result']['value'], 'qualifiers':qualifiers}])
+                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':info['download_url'][0]['result']['value'], 'qualifiers':qualifiers}])
             #if prop == 'dateCreated':
             #    resultOps.append(['statement','Point in time' ['SOFTWARE', foundProps[prop][0], info['date_created'][0]['result']['value']]])
             #if prop == 'dateModified':
@@ -200,16 +215,12 @@ def defineOperations(info, article_links, software_links, man_nodes, opt_nodes, 
 
 def createEmptySoftware(data, wbi):
     print('Creating software...')
-    try:
-        helper = wbi_helpers.search_entities(search_string=data['LABEL'], search_type='item')[0]
-        print(helper)
-        item_wb = wbi.item.get(entity_id = helper)
-    except:
-        item_wb = wbi.item.new()
-        item_wb.labels.set(language='en', value=data['LABEL'])
-        item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-        item_wb = item_wb.write() 
-        print('Software created as ', item_wb.id)
+   
+    item_wb = wbi.item.new()
+    item_wb.labels.set(language='en', value=data['LABEL'])
+    item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
+    item_wb = item_wb.write() 
+    print('Software created as ', item_wb.id)
     return item_wb
 
 
@@ -418,6 +429,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, results):
     articles = articles['REPO NAME'] | articles['TITLE EXTRACTION']
     softwares = softwares['REPO NAME'] | softwares['TITLE EXTRACTION']
 
+    software_auto = None
     softwares_aux = None
     for i in softwares:
         if opt_nodes['code repository'] != []:
@@ -425,10 +437,10 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, results):
                 for repo in softwares[i]['claims'][opt_nodes['code repository'][0]]:
                     if repo['mainsnak']['datavalue']['value'] == info['code_repository'][0]['result']['value']:
                         softwares_aux = {i:softwares[i]}
-                        
+                        software_auto = [True, 'URL match']  
                         break
-       
-
+    
+   
     if softwares_aux != None:
         softwares = softwares_aux
     print("\n")
@@ -438,7 +450,11 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, results):
         print('ARTICLE FOUND: ',i, ' : ', articles[i]['labels']['en']['value'])
     for i in softwares.keys():
         print('SOFTWARE FOUND: ',i, ' : ', softwares[i]['labels']['en']['value'])
-      
+
+
+    article_auto = None
+    articles_aux = None
+  
 
     print("\n")
     click.echo(click.style('CLASIFICATION', fg='red', bold = True))
@@ -466,7 +482,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, results):
 
     
     operation_list = defineOperations(info, article_links, software_links, man_nodes, opt_nodes, results, wbi)
-
+    
         
     return operation_list
 
