@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Bolinches"
+  given-names: "Jorge"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+- family-names: "Garijo"
+  given-names: "Daniel"
+  orcid: "http://orcid.org/0000-0003-0454-7145"
+title: "SALTbot: Software and Article Linker Toolbot"
+version: v0.0.1
+doi: 10.5281/zenodo.8190001
+date-released: 2023-07-27
+url: "https://github.com/SoftwareUnderstanding/SALTbot"
