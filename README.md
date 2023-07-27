@@ -49,11 +49,22 @@ python SALTbot.py run  [ARGS]
  python SALTbot.py [COMMAND] --help
  ```
 
- 
  ## Annex
  ### local_env directory
  In SALTbot/local_env, you can find scripts and documentation on how to create and populate your own local wikibase using docker
  
- 
+ ## Citation
+ If you use SALTbot, please use the following citation:
+ ```
+ @software{Bolinches_SALTbot_Software_and_2023,
+  author = {Bolinches, Jorge and Garijo, Daniel},
+  doi = {10.5281/zenodo.8190001},
+  month = jul,
+  title = {{SALTbot: Software and Article Linker Toolbot}},
+  url = {https://github.com/SoftwareUnderstanding/SALTbot},
+  version = {v0.0.1},
+  year = {2023}
+  }
+ ```
 
   
