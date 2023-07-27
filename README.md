@@ -8,9 +8,6 @@
   This repository contains the implementation of a tool capable of linking Scientific Articles and their Software pages on Wikibase graphs
 
 ## INSTALLATION
-
-  SALTbot uses [SOMEF](https://github.com/KnowledgeCaptureAndDiscovery/somef/), a Python library for extracting software metadata from a code repository.
-  You need to install SOMEF before installing SALTbot.
   
   It is required to have an environment with at least Python 3.9
   
@@ -20,7 +17,7 @@
   ```console
   pip install -r requirements.txt
   ```
-  3-. Install and configure somef
+  3-. Install and configure [SOMEF](https://github.com/KnowledgeCaptureAndDiscovery/somef/) a Python library for extracting software metadata from a code repository.
   https://github.com/KnowledgeCaptureAndDiscovery/somef
   
  
