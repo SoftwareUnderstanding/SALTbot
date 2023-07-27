@@ -9,6 +9,9 @@
 
 ## INSTALLATION
 
+  SALTbot uses [SOMEF](https://github.com/KnowledgeCaptureAndDiscovery/somef/), a Python library for extracting software metadata from a code repository.
+  You need to install SOMEF before installing SALTbot.
+  
   It is required to have an environment with at least Python 3.9
   
   1-. Clone repository
