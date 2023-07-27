@@ -1,5 +1,5 @@
 # SALTbot: Software and Article Linker Toolbot
-[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active) [![DOI](https://zenodo.org/badge/490763453.svg)](https://zenodo.org/badge/latestdoi/490763453)
 
 
 ## DESCRIPTION
