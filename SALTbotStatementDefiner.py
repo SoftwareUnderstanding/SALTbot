@@ -21,14 +21,27 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     #Mandatory properties
     try:
         resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
-        qualifiers = Qualifiers()
-        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['free software'], 'qualifiers':qualifiers}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
         
     except Exception as e:
         print(e)
     
-    
+    free = False
+    free_licenses = ["ZPL-2.1", "ZPL-2.0", "Zlib", "Zimbra-1.3", "Zend-2.0", "YPL-1.1", "xinetd", "XFree86-1.1", "X11",
+    "WTFPL", "W3C", "Vim", "UPL-1.0", "Unlicense", "SPL-1.0", "SMLNJ", "Sleepycat", "SISSL", "SGI-B-2.0",
+    "Ruby", "RPSL-1.0", "QPL-1.0", "Python-2.0", "PHP-3.01", "OSL-3.0", "OSL-2.1", "OSL-2.0", "OSL-1.1",
+    "OSL-1.0", "OpenSSL", "OLDAP-2.7", "OLDAP-2.3", "OFL-1.1", "OFL-1.0", "ODbL-1.0", "NPL-1.1", "NPL-1.0",
+    "NOSL", "Nokia", "NCSA", "MS-RL", "MS-PL", "MPL-2.0", "MPL-1.1", "MIT", "LPPL-1.3a", "LPPL-1.2",
+    "LPL-1.02", "LGPL-3.0-or-later", "LGPL-3.0-only", "LGPL-2.1-or-later", "LGPL-2.1-only", "ISC",
+    "IPL-1.0", "IPA", "Intel", "Imlib2", "iMatix", "IJG", "HPND", "GPL-3.0-or-later", "GPL-3.0-only",
+    "GPL-2.0-or-later", "GPL-2.0-only", "gnuplot", "GFDL-1.3-or-later", "GFDL-1.3-only", "GFDL-1.2-or-later",
+    "GFDL-1.2-only", "GFDL-1.1-or-later", "GFDL-1.1-only", "FTL", "FSFAP", "EUPL-1.2", "EUPL-1.1",
+    "EUDatagrid", "EPL-2.0", "EPL-1.0", "EFL-2.0", "ECL-2.0", "CPL-1.0", "CPAL-1.0", "Condor-1.1",
+    "ClArtistic", "CECILL-C", "CECILL-B", "CECILL-2.0", "CDDL-1.0", "CC0-1.0", "CC-BY-SA-4.0", "CC-BY-4.0",
+    "BSL-1.0", "BSD-4-Clause", "BSD-3-Clause-Clear", "BSD-3-Clause", "BSD-2-Clause", "BitTorrent-1.1",
+    "Artistic-2.0", "APSL-2.0", "Apache-2.0", "Apache-1.1", "Apache-1.0", "AGPL-3.0-or-later",
+    "AGPL-3.0-only", "AFL-3.0", "AFL-2.1", "AFL-2.0", "AFL-1.2", "AFL-1.1"]
+
     for prop in opt_nodes.keys():
         qualifiers = Qualifiers()
         if opt_nodes[prop] != None:
@@ -73,9 +86,12 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
                     try:
                         #print('spdx: ',l['result']['spdx_id'])
                         #print('keys: ', licenses.keys())
-                        if l['result']['spdx_id'] in opt_nodes['licenses'].keys():
-                            
+                        if l['result']['spdx_id'] in opt_nodes['licenses'].keys():          
                             resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':opt_nodes['licenses'][l['result']['spdx_id']], 'qualifiers':qualifiers}])
+                        
+                        if l['result']['spdx_id'] in free_licenses:
+                            free = True
+                    
                     except:
                         continue           
             if prop == 'download url':
@@ -87,7 +103,16 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
             #if prop == 'license':
             #    resultOps.append(['statement', 'Item', ['SOFTWARE', foundProps[prop][0], info['license'][0]['result']['value']]])
             #except Exception as e:
+    
             #    print(e)
+    try:
+        qualifiers = Qualifiers()
+        if opt_nodes['free software'] != None and free == True:
+            resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':opt_nodes['free software'], 'qualifiers':qualifiers}])
+        else:
+            resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['software'], 'qualifiers':qualifiers}])
+    except Exception as e:
+        print(e)
     qualifiers = Qualifiers()
     resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':articleQnode, 'qualifiers':qualifiers}])
     #print(resultOps)
@@ -99,6 +124,8 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     map_articles = {}
     map_softwares = {}
 
+    #print(man_nodes)
+    #print(opt_nodes)
     #print('article links: ', article_links)
     #print('software links: ', software_links)
 

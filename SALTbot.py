@@ -79,13 +79,13 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 	passw = config_data['PASSWORD']
 
 	if config_data['MEDIAWIKI_API_URL']!='':
-		print(config_data['MEDIAWIKI_API_URL'])
+		#print(config_data['MEDIAWIKI_API_URL'])
 		wbi_config['MEDIAWIKI_API_URL'] = config_data['MEDIAWIKI_API_URL']
 	if config_data['SPARQL_ENDPOINT_URL']!='':
-		print(config_data['SPARQL_ENDPOINT_URL'])
+		#print(config_data['SPARQL_ENDPOINT_URL'])
 		wbi_config['SPARQL_ENDPOINT_URL'] = config_data['SPARQL_ENDPOINT_URL']
 	if config_data['WIKIBASE_URL']!='':
-		print(config_data['WIKIBASE_URL'])
+		#print(config_data['WIKIBASE_URL'])
 		wbi_config['WIKIBASE_URL'] = config_data['WIKIBASE_URL']
 
 
@@ -96,7 +96,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 	#MANDATORY NODES (instance_of, main_subject, described_by_source, scientific article, software category, free software)
 	man_nodes = {}
 	try:
-		man_nodes = SALTbotHandler.getMandatoryNodes(wbi)
+		man_nodes = SALTbotHandler.getMandatoryNodes(wbi, config_data)
 	except Exception as e:
 		return
 	
