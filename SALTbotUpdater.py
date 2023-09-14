@@ -19,7 +19,8 @@ def createEmptySoftware(data, wbi):
         item_wb = wbi.item.new()
         item_wb.labels.set(language='en', value=data['LABEL'])
         item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-        item_wb = item_wb.write() 
+        summary='created software '+ data['LABEL']
+        item_wb = item_wb.write(summary=summary) 
         print('Software created as ', item_wb.id)
         return item_wb
     except Exception as e:
@@ -38,11 +39,13 @@ def createStatement(data,last_software,subject_map, wbi):
 
         if data['s'] not in subject_map.keys():
             item_wb = wbi.item.get(entity_id=data['s'])
-            subject_map.update({item_wb.id:item_wb})
+            subject_map.update({item_wb.id:[item_wb, '']})
         if data['datatype'] == 'Item':
-            subject_map[data['s']].claims.add(Item(value=data['o'], prop_nr=data['p']),action_if_exists = ActionIfExists.FORCE_APPEND)
+            subject_map[data['s']][0].claims.add(Item(value=data['o'], prop_nr=data['p']),action_if_exists = ActionIfExists.FORCE_APPEND)
+            subject_map[data['s']][1] = subject_map[data['s']][1] +' '+ str(data['p']) + ':' + str(data['o']) + ' '
         elif data['datatype'] == 'URL':
-            subject_map[data['s']].claims.add(URL(value=data['o'], prop_nr=data['p'], qualifiers=data['qualifiers']), action_if_exists = ActionIfExists.FORCE_APPEND)
+            subject_map[data['s']][0].claims.add(URL(value=data['o'], prop_nr=data['p'], qualifiers=data['qualifiers']), action_if_exists = ActionIfExists.FORCE_APPEND)
+            subject_map[data['s']][1] = subject_map[data['s']][1] + ' ' +str(data['p']) + ':' +str(data['o']) + ' '
         print('succesfully created [', data['s'], ' ', data['p'],' ' ,data['o'], ']')
     except Exception as e:
         print('statement ', data, 'could not be imported. Reason: ', e)
@@ -53,16 +56,22 @@ def updateChanges(operation_list, wbi):
     subject_map = {}
     if(operation_list == []):
         print('SALTbot did not detect any relevant statements to add to the graph')
-    for operation in operation_list:    
-        #print(operation)
+    for operation in operation_list:  
         if operation[0]=='create':
             last_software = createEmptySoftware(operation[1], wbi)
-            subject_map.update({last_software.id:last_software}) 
+            subject_map.update({last_software.id:[last_software, '']}) 
            
         elif operation[0] == 'statement':
             createStatement(operation[1],last_software,subject_map, wbi)
     for entity in subject_map.keys():
-        subject_map[entity].write()
+    
+        try:
+            summary=subject_map[entity][1]
+            print('summary: ', summary)
+            subject_map[entity][0].write(summary=summary)
+            #print('succesfully written statements for ', subject_map[entity])
+        except Exception as e:
+            print(e)
 
 
 
