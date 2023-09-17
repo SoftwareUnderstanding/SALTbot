@@ -4,8 +4,9 @@
 
 ## DESCRIPTION
 
+  This repository contains the implementation of a tool designed to link Scientific Articles and their Software pages on Wikibase graphs.
   
-  This repository contains the implementation of a tool capable of linking Scientific Articles and their Software pages on Wikibase graphs
+  SALTBot is proposed as a Wikidata bot, with its own page [here](https://www.wikidata.org/wiki/User:SALTbot). It is maintained and run by the Ontology Engineering Group and Universidad Politécnica de Madrid.
 
 ## INSTALLATION
   
