@@ -95,6 +95,8 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	#MANDATORY NODES (instance_of, main_subject, described_by_source, scientific article, software category, free software)
 	man_nodes = {}
+	#print(config_data)
+	#return
 	try:
 		man_nodes = SALTbotHandler.getMandatoryNodes(wbi, config_data)
 	except Exception as e:
@@ -105,7 +107,7 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	#software props
 	opt_nodes = {}
-	opt_nodes = SALTbotHandler.getOptionalNodes(wbi)
+	opt_nodes = SALTbotHandler.getOptionalNodes(wbi, config_data)
 	
 	
 	
