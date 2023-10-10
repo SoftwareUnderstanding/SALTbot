@@ -35,10 +35,58 @@ def getCorrectQnode(name, Qnodes):
     return result
 
 #TODO: change excepts  
-def getOptionalNodes(wbi):
+def getOptionalNodes(wbi, configData):
     opt_nodes = {}
     opt_nodes['licenses'] = {}
 
+
+    if (configData['MEDIAWIKI_API_URL'] == '' and configData['SPARQL_ENDPOINT_URL']=='' and configData['WIKIBASE_URL']=='') or (configData['MEDIAWIKI_API_URL'] == 'https://www.wikidata.org/w/api.php' and configData['SPARQL_ENDPOINT_URL']=='https://query.wikidata.org/' and configData['WIKIBASE_URL']=='https://www.wikidata.org'):
+       {'licenses': {}, 'code repository': 'P1324', 'programming language': 'P277', 'download url': 'P4945', 'license': 'P275', 'version control system': 'P8423', 'web interface software': 'P10627', 'Git': 'Q186055', 'GitHub': 'Q82066181', 'DOI': 'P356', 'free software': 'Q341'}
+    else:
+        aux = 0
+        try:
+            opt_nodes['code repository'] = getCorrectQnode('source code repository URL', wbi_helpers.search_entities(search_string='source code repository URL', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['programming language'] = getCorrectQnode('programmed in', wbi_helpers.search_entities(search_string='programming language', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['download url'] = getCorrectQnode('download link', wbi_helpers.search_entities(search_string='download url', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['license'] = getCorrectQnode('copyright license', wbi_helpers.search_entities(search_string='license', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['version control system'] = getCorrectQnode('version control system', wbi_helpers.search_entities(search_string='version control system', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['web interface software'] = getCorrectQnode('web interface software', wbi_helpers.search_entities(search_string='web interface software', dict_result = True,search_type='property'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['Git'] = getCorrectQnode('Git',wbi_helpers.search_entities(search_string='Git', dict_result=True, search_type='item'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['GitHub'] = getCorrectQnode('GitHub',wbi_helpers.search_entities(search_string='GitHub', dict_result = True, search_type='item'))
+        except:
+            aux = 1
+        try:
+            opt_nodes['DOI'] = getCorrectQnode('DOI', wbi_helpers.search_entities(search_string='DOI', dict_result=True, search_type='property'))
+        except:
+            aux = 1
+        try: 
+            opt_nodes['free software'] = getCorrectQnode('free software', wbi_helpers.search_entities(search_string='free software', dict_result = True,search_type='item'))
+        except:
+            aux = 1
+    
+    #TODO:change Pnode for local
+    #print(opt_nodes)
     try:
         query_license = ''' SELECT ?spdx ?item WHERE {?item wdt:P2479 ?spdx.}'''
         results = wbi_helpers.execute_sparql_query(query_license)
@@ -49,68 +97,31 @@ def getOptionalNodes(wbi):
         opt_nodes['licenses'] = licenses
     except Exception as e:
         print('No licenses found')
-
-    #print(licenses)
-    aux = 0
-    try:
-        opt_nodes['code repository'] = getCorrectQnode('source code repository URL', wbi_helpers.search_entities(search_string='source code repository URL', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['programming language'] = getCorrectQnode('programmed in', wbi_helpers.search_entities(search_string='programming language', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['download url'] = getCorrectQnode('download link', wbi_helpers.search_entities(search_string='download url', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['license'] = getCorrectQnode('copyright license', wbi_helpers.search_entities(search_string='license', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['version control system'] = getCorrectQnode('version control system', wbi_helpers.search_entities(search_string='version control system', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['web interface software'] = getCorrectQnode('web interface software', wbi_helpers.search_entities(search_string='web interface software', dict_result = True,search_type='property'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['Git'] = getCorrectQnode('Git',wbi_helpers.search_entities(search_string='Git', dict_result=True, search_type='item'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['GitHub'] = getCorrectQnode('GitHub',wbi_helpers.search_entities(search_string='GitHub', dict_result = True, search_type='item'))
-    except:
-        aux = 1
-    try:
-        opt_nodes['DOI'] = getCorrectQnode('DOI', wbi_helpers.search_entities(search_string='DOI', dict_result=True, search_type='property'))
-    except:
-        aux = 1
-    try: 
-        opt_nodes['free software'] = getCorrectQnode('free software', wbi_helpers.search_entities(search_string='free software', dict_result = True,search_type='item'))
-    except:
-        aux = 1
+    
     return opt_nodes
        
 def getMandatoryNodes(wbi, configData):
     prop_map = {}
-    try:
 
-        prop_map['instance of'] = getCorrectQnode('instance of', wbi_helpers.search_entities(search_string='instance of', dict_result = True,search_type='property'))
-        prop_map['main subject'] = getCorrectQnode('main subject', wbi_helpers.search_entities(search_string='main subject', dict_result = True,search_type='property'))	
-        prop_map['described by source'] = getCorrectQnode('described by source', wbi_helpers.search_entities(search_string='described by source', dict_result = True,search_type='property'))
-        prop_map['scholarly article'] = getCorrectQnode('scholarly article', wbi_helpers.search_entities(search_string='scholarly article', dict_result = True,search_type='item'))	
-        prop_map['software category'] = getCorrectQnode('software category', wbi_helpers.search_entities(search_string='software category', dict_result = True,search_type='item'))
-        prop_map['software'] = getCorrectQnode('software', wbi_helpers.search_entities(search_string='software', dict_result = True,search_type='item'))
-
-        
-    except Exception as e:
-        print('SALTbot Error: one or more of the required entities and properties has not been found in the target wikibase')
-        print(e)
-        raise(e)
+    if (configData['MEDIAWIKI_API_URL'] == '' and configData['SPARQL_ENDPOINT_URL']=='' and configData['WIKIBASE_URL']=='') or (configData['MEDIAWIKI_API_URL'] == 'https://www.wikidata.org/w/api.php' and configData['SPARQL_ENDPOINT_URL']=='https://query.wikidata.org/' and configData['WIKIBASE_URL']=='https://www.wikidata.org'):
+        prop_map={'instance of': 'P31', 'main subject': 'P921', 'described by source': 'P1343', 'scholarly article': 'Q13442814', 'software category': 'Q17155032', 'software': 'Q7397'}
     
+    else:
+        try:
+
+            prop_map['instance of'] = getCorrectQnode('instance of', wbi_helpers.search_entities(search_string='instance of', dict_result = True,search_type='property'))
+            prop_map['main subject'] = getCorrectQnode('main subject', wbi_helpers.search_entities(search_string='main subject', dict_result = True,search_type='property'))	
+            prop_map['described by source'] = getCorrectQnode('described by source', wbi_helpers.search_entities(search_string='described by source', dict_result = True,search_type='property'))
+            prop_map['scholarly article'] = getCorrectQnode('scholarly article', wbi_helpers.search_entities(search_string='scholarly article', dict_result = True,search_type='item'))	
+            prop_map['software category'] = getCorrectQnode('software category', wbi_helpers.search_entities(search_string='software category', dict_result = True,search_type='item'))
+            prop_map['software'] = getCorrectQnode('software', wbi_helpers.search_entities(search_string='software', dict_result = True,search_type='item'))
+
+            
+        except Exception as e:
+            print('SALTbot Error: one or more of the required entities and properties has not been found in the target wikibase')
+            print(e)
+            raise(e)
+        
     #print(prop_map)
     return prop_map
 #gets possible pnodes of target wikibase to create software pages and returns a list with all the possible statements for that software
