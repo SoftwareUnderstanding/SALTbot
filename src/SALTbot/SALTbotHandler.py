@@ -16,7 +16,7 @@ import time
 import json
 import re
 
-import pandas as pd
+
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
@@ -141,16 +141,20 @@ def getRelatedEntities(entityJSON, candidates, property=None):
     return entities
 
 
+#TODO: uncomment if
 # queries the graph for entities with name, which are instance of targetClass. The instance_of pnode has to be passed for integration with other wikibases
 def getEntitiesByName(name, targetClass, man_nodes, wbi):
 
     entities={}
 
     results_wbi_helper = wbi_helpers.search_entities(search_string=name, dict_result=True, search_type='item')
-    
+    #print(results_wbi_helper)
     for i in results_wbi_helper:
         #print(i['description'])      
         query = '''ASK {wd:'''+i['id']+''' wdt:'''+man_nodes['instance of']+'''+ wd:'''+targetClass+'''}'''
+
+        #print('query: ', query)
+
         match = wbi_helpers.execute_sparql_query(query)
 
         if(str(match['boolean'])=='True' and i['id'] not in entities.keys()):
@@ -182,7 +186,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     softwares = {"TITLE EXTRACTION":{}, "REPO NAME":{}}
 
     parsedTitles, DOIs = SALTbotSearcher.parseTitles(info)
-
+    #print('parsedTitles: ', parsedTitles)
     results.update({info['code_repository'][0]['result']['value']:{'repo-article':[], 'article':None, 'software':None, 'article-software-link':False, 'software-article-link':False}})
 
     if(parsedTitles == []):
@@ -197,8 +201,11 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     if(articles['TITLE EXTRACTION']=={}):
         articles['REPO NAME'].update(getEntitiesByName( name,man_nodes['scholarly article'], man_nodes, wbi))
     
+    #print('ARTICLES: ', articles)
 
     articles = articles['REPO NAME'] | articles['TITLE EXTRACTION']
+
+    #print('ARTICLES: ', articles)
 
     if parsedTitles != []: #and articles != {})
         for title in parsedTitles: 
@@ -251,7 +258,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     for i in articles.keys():
         print('ARTICLE FOUND: ',i, ' : ', articles[i]['labels']['en']['value'])
 
-    if articles == {}:
+    if softwares == {}:
         print('NO SOFTWARE FOUND ON TARGET WIKIBASE')
     for i in softwares.keys():
         print('SOFTWARE FOUND: ',i, ' : ', softwares[i]['labels']['en']['value'])

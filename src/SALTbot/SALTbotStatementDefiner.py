@@ -11,7 +11,6 @@ import time
 import json
 import re
 
-import pandas as pd
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
@@ -22,9 +21,11 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     try:
         resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
-        
+        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['article'], 'qualifiers':None}])
     except Exception as e:
         print(e)
+
+        
     
     free = False
     free_licenses = ["ZPL-2.1", "ZPL-2.0", "Zlib", "Zimbra-1.3", "Zend-2.0", "YPL-1.1", "xinetd", "XFree86-1.1", "X11",
@@ -118,6 +119,17 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     #print(resultOps)
     return resultOps
 
+def createArticleOperations(info, softwareQnode, man_nodes, opt_nodes, wbi):
+    resultOps = []
+    #print(licenses)
+    #Mandatory properties
+    try:
+        resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
+        #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
+        
+    except Exception as e:
+        print(e)
+
 #TODO:change to man_nodes
 def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, wbi):
     operation_list = []
@@ -130,33 +142,39 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     #print('software links: ', software_links)
 
 
-    if(article_links!={}):
+    if(article_links!={} or software_links !={}):
                
         click.echo(click.style('LINKING', fg='red', bold =True))
         count=1
-        
-        click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
-        print('0 : SKIP')
-        map_articles.update({'0':'SKIP'})
-        for i in article_links:
-            print(count, ' : ', i)
-            map_articles.update({str(count):i})
-            count = count+1
+        if article_links !={}:
+            click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
+            print('0 : SKIP')
+            map_articles.update({'0':'SKIP'})
+            for i in article_links:
+                print(count, ' : ', i)
+                map_articles.update({str(count):i})
+                count = count+1
            
         
-        if auto[0] == True and auto[1][0]==True:
-            inp_article = '1'
-            print('AUTOMATICALLY SELECTED ', map_articles[inp_article], 'AS ARTICLE DUE TO', auto[1][1])
-            results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
-        else:
-            inp_article = input("ARTICLE NUMBER: ").strip()
-            while(inp_article not in map_articles):
-                inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
-            if inp_article == '0':
-                results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
-                return []
-            else:
+            if auto[0] == True and auto[1][0]==True:
+                inp_article = '1'
+                print('AUTOMATICALLY SELECTED ', map_articles[inp_article], 'AS ARTICLE DUE TO', auto[1][1])
                 results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
+            else:
+                inp_article = input("ARTICLE NUMBER: ").strip()
+                while(inp_article not in map_articles):
+                    inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
+                if inp_article == '0':
+                    results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
+                    return []
+                else:
+                    results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
+        else:
+            aux_ops = createArticleOperations(info,map_articles[inp_article], man_nodes, opt_nodes, wbi)
+            for i in aux_ops:
+                operation_list.append(i)
+            operation_list.append(['statement', {'datatype':'Item', 's':map_softwares[inp_article], 'p':man_nodes['described by source'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
+            
         if software_links !={}:
             count=1
             click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
@@ -201,6 +219,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     return operation_list
 
 
+#TODO: Move to searcher
 def getRelations(operation_list, article_links, software_links, Qnode_article, Qnode_software, man_nodes, results,  wbi):
     article_software_link = False
     software_article_link = False

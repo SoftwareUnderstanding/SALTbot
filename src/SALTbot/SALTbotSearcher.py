@@ -14,7 +14,6 @@ import time
 import json
 import re
 
-import pandas as pd
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 

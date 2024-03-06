@@ -6,34 +6,37 @@ from wikibaseintegrator import wbi_helpers
 from wikibaseintegrator.datatypes import ExternalID, Item, String, URL, Quantity, Property, CommonsMedia, GlobeCoordinate
 from wikibaseintegrator.models import Qualifiers
 from wikibaseintegrator.wbi_enums import ActionIfExists
-import pandas as pd
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 import re
 
 
-def createEmptySoftware(data, wbi):
+def createEmptyEntity(data, wbi):
     try:
-        print('Creating software...')
+        print('Creating entity...')
    
         item_wb = wbi.item.new()
         item_wb.labels.set(language='en', value=data['LABEL'])
         item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-        summary='created software '+ data['LABEL']
+        summary='created '+ data['LABEL']
         item_wb = item_wb.write(summary=summary) 
-        print('Software created as ', item_wb.id)
+        print('Item created as ', item_wb.id)
         return item_wb
     except Exception as e:
         print('Create ',data,' could not be done. Reason: ', e)
 
 
-def createStatement(data,last_software,subject_map, wbi):
+
+
+
+
+def createStatement(data,last_item,subject_map, wbi):
     try:
-  
+        
         if not re.search("Q\d+", data['s']):
-            data['s'] =  last_software.id
+            data['s'] =  last_item.id
         elif not re.search("Q\d+", data['o']):
-            data['o'] =  last_software.id
+            data['o'] =  last_item.id
         
         print('creating statement [', data['s'], ' ', data['p'],' ' ,data['o'], ']')
 
@@ -50,19 +53,21 @@ def createStatement(data,last_software,subject_map, wbi):
     except Exception as e:
         print('statement ', data, 'could not be imported. Reason: ', e)
 
-
+#CHANGED LAST_ITEM FROM LAST_SOFTWARE
 def updateChanges(operation_list, wbi):
-    last_software = None
+    last_item = None
     subject_map = {}
     if(operation_list == []):
         print('SALTbot did not detect any relevant statements to add to the graph')
     for operation in operation_list:  
         if operation[0]=='create':
-            last_software = createEmptySoftware(operation[1], wbi)
-            subject_map.update({last_software.id:[last_software, '']}) 
+            last_item = createEmptyEntity(operation[1], wbi)
+            subject_map.update({last_item.id:[last_item, '']})
+
+            print("subject_map: ", subject_map) 
            
         elif operation[0] == 'statement':
-            createStatement(operation[1],last_software,subject_map, wbi)
+            createStatement(operation[1],last_item,subject_map, wbi)
     for entity in subject_map.keys():
     
         try:
@@ -74,13 +79,13 @@ def updateChanges(operation_list, wbi):
             print(e)
 
 
-
 def executeOperations(operation_list,auto,wbi):
     
     click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
     for operation in operation_list:
+        print(operation)
         if operation[0] == 'create':
-            print('CREATE SOFTWARE [', operation[1]['LABEL'], '] WITH DESCRIPTION [', operation[1]['DESCRIPTION'],']')
+            print('CREATE ENTITY [', operation[1]['LABEL'], '] WITH DESCRIPTION [', operation[1]['DESCRIPTION'],']')
         if operation[0] == 'statement':
             print('CREATE STATEMENT [', operation[1]['s'],' ',operation[1]['p'],' ',operation[1]['o'],'] OF TYPE [', operation[1]['datatype'], ']')
     
