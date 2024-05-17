@@ -13,7 +13,7 @@ from wikibaseintegrator.wbi_enums import ActionIfExists
 import time
 import json
 import re
-
+import requests
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
@@ -27,6 +27,21 @@ def parseBib(info):
         return None
     parsedinfo.append(parsedtitle)
 
+
+def queryOpenAlex(article):
+    article = article.replace(",", "")
+    url = 'https://api.openalex.org/works?filter=title.search:'+ article
+    #print(url)
+
+    r = requests.get(url).json()
+
+    if r['meta']['count']>1:
+        return r['results'][0]
+    else:
+         return None
+
+#returns all the article titles detected
+#info: json extracted with somef
 def parseTitles(info):
     parsedinfo = []
     authors = {}

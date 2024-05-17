@@ -119,16 +119,18 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     #print(resultOps)
     return resultOps
 
-def createArticleOperations(info, softwareQnode, man_nodes, opt_nodes, wbi):
+def createArticleOperations(info, man_nodes, opt_nodes, wbi):
     resultOps = []
     #print(licenses)
     #Mandatory properties
     try:
-        resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
+        resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'] + 'scholarly article', 'DESCRIPTION':info['description'][0]['result']['value']}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
         
     except Exception as e:
         print(e)
+    
+    return resultOps
 
 #TODO:change to man_nodes
 def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, wbi):
@@ -142,80 +144,95 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     #print('software links: ', software_links)
 
 
-    if(article_links!={} or software_links !={}):
-               
-        click.echo(click.style('LINKING', fg='red', bold =True))
-        count=1
-        if article_links !={}:
-            click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
-            print('0 : SKIP')
-            map_articles.update({'0':'SKIP'})
-            for i in article_links:
-                print(count, ' : ', i)
-                map_articles.update({str(count):i})
-                count = count+1
+    
            
-        
-            if auto[0] == True and auto[1][0]==True:
-                inp_article = '1'
-                print('AUTOMATICALLY SELECTED ', map_articles[inp_article], 'AS ARTICLE DUE TO', auto[1][1])
+    count=1
+    click.echo(click.style('LINKING', fg='red', bold =True))
+    qnode_article = None
+    if article_links !={}:
+        click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
+        print('0 : SKIP')
+        map_articles.update({'0':'SKIP'})
+        for i in article_links:
+            print(count, ' : ', i)
+            map_articles.update({str(count):i})
+            count = count+1
+       
+    
+        if auto[0] == True and auto[1][0]==True:
+            qnode_article = map_articles[inp_article]
+            print('AUTOMATICALLY SELECTED ', map_articles[inp_article], 'AS ARTICLE DUE TO', auto[1][1])
+            results[info['code_repository'][0]['result']['value']].update({'article':qnode_article})
+        else:
+            inp_article = input("ARTICLE NUMBER: ").strip()
+            while(inp_article not in map_articles):
+                inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
+            if inp_article == '0':
+                results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
+                #return []
+                aux_ops = createArticleOperations(info, man_nodes, opt_nodes, wbi)
+                qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
+                for i in aux_ops:
+                    operation_list.append(i)
+            else:
+                qnode_article = map_articles[inp_article]
                 results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
-            else:
-                inp_article = input("ARTICLE NUMBER: ").strip()
-                while(inp_article not in map_articles):
-                    inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
-                if inp_article == '0':
-                    results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
-                    return []
-                else:
-                    results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
-        else:
-            aux_ops = createArticleOperations(info,map_articles[inp_article], man_nodes, opt_nodes, wbi)
-            for i in aux_ops:
-                operation_list.append(i)
-            operation_list.append(['statement', {'datatype':'Item', 's':map_softwares[inp_article], 'p':man_nodes['described by source'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
-            
-        if software_links !={}:
-            count=1
-            click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
-            print('0 : SKIP')
-            map_softwares.update({'0':'SKIP'})
-            for i in software_links:
-                print(count, ' : ', i)
-                map_softwares.update({str(count):i})
-                count = count+1
-            
-            #print('auto: ',auto)
-            if auto[0] == True and auto[2][0]==True:
-                inp_software = '1'
-                print('AUTOMATICALLY SELECTED ', map_softwares[inp_software], 'AS SOFTWARE DUE TO', auto[2][1])
-                results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
-
-            elif len(article_links[map_articles[inp_article]]) == 1:
-                for i in map_softwares:
-                    
-                    if map_softwares[i]==article_links[map_articles[inp_article]][0][0]:    
-                        inp_software = i
-                        print('AUTOMATICALLY SELECTED ', map_softwares[inp_software], 'AS SOFTWARE DUE TO PREVIOUS LINK WITH', map_articles[inp_article])
-                        results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
-            else:
-                inp_software = input("SOFTWARE NUMBER: ").strip()
+    else:
+        aux_ops = createArticleOperations(info, man_nodes, opt_nodes, wbi)
+        qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
+        for i in aux_ops:
+            operation_list.append(i)
+        #operation_list.append(['statement', {'datatype':'Item', 's':map_softwares[inp_article], 'p':man_nodes['described by source'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
+    #print(operation_list)
+    
+    print('inp_article: ', inp_article)
+    if software_links !={}:
+        count=1
+        click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
+        print('0 : SKIP')
+        map_softwares.update({'0':'SKIP'})
+        for i in software_links:
+            print(count, ' : ', i)
+            map_softwares.update({str(count):i})
+            count = count+1
         
-                while(inp_software not in map_softwares):
-                    inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()
-                if inp_software == '0':
-                    return []
-                else:
-                    results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
-
-            operation_list = getRelations(operation_list, article_links,software_links,map_articles[inp_article],map_softwares[inp_software],man_nodes, results[info['code_repository'][0]['result']['value']], wbi)
+        #print('auto: ',auto)
+        if auto[0] == True and auto[2][0]==True:
+            inp_software = '1'
+            print('AUTOMATICALLY SELECTED ', map_softwares[inp_software], 'AS SOFTWARE DUE TO', auto[2][1])
+            results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
+        #elif len(article_links[map_articles[inp_article]]) == 1:
+        #    for i in map_softwares:
+                
+        #        if map_softwares[i]==article_links[map_articles[inp_article]][0][0]:    
+        #            inp_software = i
+        #            print('AUTOMATICALLY SELECTED ', map_softwares[inp_software], 'AS SOFTWARE DUE TO PREVIOUS LINK WITH', map_articles[inp_article])
+        #            results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
         else:
-            aux_ops = createSoftwareOperations(info,map_articles[inp_article], man_nodes, opt_nodes, wbi)
-            for i in aux_ops:
-                operation_list.append(i)
-            operation_list.append(['statement', {'datatype':'Item', 's':map_articles[inp_article], 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
-            
-    #print('results en operations', results)
+            inp_software = input("SOFTWARE NUMBER: ").strip()
+    
+            while(inp_software not in map_softwares):
+                inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()
+            #if inp_software == '0':
+            #    return []
+            else:
+                results[info['code_repository'][0]['result']['value']].update({'software':map_softwares[inp_software]})
+        if article_links != {} and inp_article != '0':
+            operation_list = getRelations(operation_list, article_links,software_links,qnode_article,map_softwares[inp_software],man_nodes, results[info['code_repository'][0]['result']['value']], wbi)
+        else:
+            operation_list.append(['statement', {'datatype':'Item', 's':qnode_article, 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
+            operation_list.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':qnode_article}])
+
+    else:
+        aux_ops = createSoftwareOperations(info,qnode_article, man_nodes, opt_nodes, wbi)
+        for i in aux_ops:
+            operation_list.append(i)
+        operation_list.append(['statement', {'datatype':'Item', 's':qnode_article, 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
+        
+    #prnt('results en operations', results)
+    #print('operation list en operations', operation_list)
+    for i in operation_list:
+        print(i)
     return operation_list
 
 
@@ -243,5 +260,5 @@ def getRelations(operation_list, article_links, software_links, Qnode_article, Q
     results['software-article-link'] = software_article_link
 
     #print('results en get relations:', results)
-    #print('operation list', operation_list)
+    #print('operation list in get relations', operation_list)
     return operation_list
