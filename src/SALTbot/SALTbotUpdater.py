@@ -9,7 +9,8 @@ from wikibaseintegrator.wbi_enums import ActionIfExists
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 import re
-
+import json
+import ast
 
 def createEmptyEntity(data, wbi):
     try:
@@ -82,15 +83,24 @@ def updateChanges(operation_list, wbi):
 def executeOperations(operation_list,auto,wbi):
     
     click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
+    #print(operation_list)
+    #operation = json.load(str(operation_list.readlines()))
+    #print(operation)
+    operation_list_aux = []
     for operation in operation_list:
-        print(operation)
-        if operation[0] == 'create':
-            print('CREATE ENTITY [', operation[1]['LABEL'], '] WITH DESCRIPTION [', operation[1]['DESCRIPTION'],']')
-        if operation[0] == 'statement':
-            print('CREATE STATEMENT [', operation[1]['s'],' ',operation[1]['p'],' ',operation[1]['o'],'] OF TYPE [', operation[1]['datatype'], ']')
+        #print('operation en bucle', operation)
+        operation_aux = ast.literal_eval(operation)
+        operation_list_aux.append(operation_aux)
+        #print('operation_aux', operation_aux)
+        #print('op 1', operation_aux[1])
+        #print(operation_aux[1].keys())
+        if operation_aux[0] == 'create':
+            print('CREATE ENTITY [', operation_aux[1]['LABEL'], '] WITH DESCRIPTION [', operation_aux[1]['DESCRIPTION'],']')
+        if operation_aux[0] == 'statement':
+            print('CREATE STATEMENT [', operation_aux[1]['s'],' ',operation_aux[1]['p'],' ',operation_aux[1]['o'],'] OF TYPE [', operation_aux[1]['datatype'], ' WITH QUALIFIERS ', operation_aux[1]['qualifiers'],']')
     
-    if auto != True:
-        updateChanges(operation_list, wbi)
+    if auto == True:
+        updateChanges(operation_list_aux, wbi)
     else:
         confirmation = input("CONFIRM (Y/N): ").strip()
             
@@ -98,5 +108,5 @@ def executeOperations(operation_list,auto,wbi):
             confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
             
         if(confirmation == "Y"):
-            updateChanges(operation_list, wbi)
+            updateChanges(operation_list_aux, wbi)
 

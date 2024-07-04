@@ -86,10 +86,11 @@ def update(file, auto):
 	
 	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
 
-	operations = open(file, 'r').readlines()
-	operation_list = json.loads(operations)
-	if len(operation_list) > 0:
-			SALTbotUpdater.executeOperations(operation_list,auto,wbi)
+	operation_list = open(file, 'r')
+	#operation_list = json.loads(operations)
+
+	SALTbotUpdater.executeOperations(operation_list,auto,wbi)
+	operation_list.close()
 
 
 #@click.command(help='Run SALTbot')
@@ -107,6 +108,7 @@ def describe(jsonfile, url, urlfile, jsondir, auto,  output):
 	try:
 		stream = open('config.yaml', 'r')   
 		config_data = yaml.load(stream, Loader = SafeLoader)
+		#print(config_data)
 	except Exception as e:
 		print(e)
 		click.echo('SALTbot Error: Configuration file not found')

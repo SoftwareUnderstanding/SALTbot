@@ -14,7 +14,7 @@ import re
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
-def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
+def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
     resultOps = []
     #print(licenses)
     #Mandatory properties
@@ -25,7 +25,7 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     except Exception as e:
         print(e)
 
-        
+    print   
     
     free = False
     free_licenses = ["ZPL-2.1", "ZPL-2.0", "Zlib", "Zimbra-1.3", "Zend-2.0", "YPL-1.1", "xinetd", "XFree86-1.1", "X11",
@@ -44,15 +44,15 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     "AGPL-3.0-only", "AFL-3.0", "AFL-2.1", "AFL-2.0", "AFL-1.2", "AFL-1.1"]
 
     for prop in opt_nodes.keys():
-        qualifiers = Qualifiers()
+        qualifiers = None
         if opt_nodes[prop] != None:
             if prop == 'code repository':
                 
-                qualifiers = Qualifiers()
+                qualifiers = []
                 if opt_nodes['web interface software']!=None and opt_nodes['version control system']!=None and opt_nodes['Git']!=None and opt_nodes['GitHub'] !=None:
 
-                    qualifiers.add(Item(value=opt_nodes['Git'], prop_nr=opt_nodes['version control system']))
-                    qualifiers.add(Item(value=opt_nodes['GitHub'], prop_nr=opt_nodes['web interface software']))
+                    qualifiers.append([opt_nodes['Git'], opt_nodes['version control system']])
+                    qualifiers.append([opt_nodes['GitHub'], opt_nodes['web interface software']])
 
                 resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':info['code_repository'][0]['result']['value'], 'qualifiers':qualifiers}])
                
@@ -107,33 +107,46 @@ def createSoftwareOperations(info, articleQnode, man_nodes, opt_nodes, wbi):
     
             #    print(e)
     try:
-        qualifiers = Qualifiers()
+        #qualifiers = Qualifiers()
         if opt_nodes['free software'] != None and free == True:
             resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':opt_nodes['free software'], 'qualifiers':qualifiers}])
         else:
             resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['software'], 'qualifiers':qualifiers}])
     except Exception as e:
         print(e)
-    qualifiers = Qualifiers()
-    resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':articleQnode, 'qualifiers':qualifiers}])
+    #qualifiers = Qualifiers()
+    #resultOps.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':articleQnode, 'qualifiers':qualifiers}])
     #print(resultOps)
     return resultOps
 
-def createArticleOperations(info, man_nodes, opt_nodes, wbi):
+def createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi):
     resultOps = []
     #print(licenses)
     #Mandatory properties
+    print(man_nodes)
+    print(openAlex.keys())
+    #resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['article'], 'qualifiers':None}])
+   
     try:
-        resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'] + 'scholarly article', 'DESCRIPTION':info['description'][0]['result']['value']}])
+        resultOps.append(['create',{'LABEL':openAlex['title'], 'DESCRIPTION':info['description'][0]['result']['value']}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
-        
+        resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':man_nodes['instance of'], 'o':man_nodes['scholarly article'], 'qualifiers':None}])
     except Exception as e:
         print(e)
     
+    for prop in opt_nodes.keys():
+        qualifiers = None
+        if opt_nodes[prop] != None:
+            if prop == 'DOI':
+                if 'doi' in openAlex.keys():
+                    resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':opt_nodes['DOI'], 'o':openAlex['doi'], 'qualifiers':None}])
+            if prop == 'OpenAlex ID':
+                if 'id' in openAlex.keys():
+                    resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':opt_nodes['OpenAlex ID'], 'o':openAlex['id'], 'qualifiers':None}])
     return resultOps
 
 #TODO:change to man_nodes
-def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, wbi):
+def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, openAlex, wbi):
     operation_list = []
     map_articles = {}
     map_softwares = {}
@@ -149,6 +162,43 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     count=1
     click.echo(click.style('LINKING', fg='red', bold =True))
     qnode_article = None
+    qnode_software = None
+    
+    #TODO:Si no hay articulos lo crea
+    if article_links == {}:
+        aux_ops = createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi)
+        for i in aux_ops:
+                operation_list.append(i)
+    #SI HAY ARTICULOS
+    else:
+        #SELECCION ARTICULO
+        click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
+        print('0 : CREATE ARTICLE')
+        map_articles.update({'0':'SKIP'})
+        count = 1
+        for i in article_links:
+            print(count, ' : ', i)
+            map_articles.update({str(count):i})
+            count = count+1
+
+        inp_article = input("ARTICLE NUMBER: ").strip()
+        while(inp_article not in map_articles):
+            inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
+        
+        #SI SELECCIONA 0, crear
+        if inp_article == '0':
+                #results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
+                #return []
+            aux_ops = createArticleOperations(info, man_nodes, opt_nodes,openAlex, wbi)
+            #    qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
+            for i in aux_ops:
+                operation_list.append(i)
+        #SI SELECCIONA OTRO, GUARAR QNODO
+        else:
+            qnode_article = map_articles[inp_article]
+            #results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
+  
+    '''            
     if article_links !={}:
         click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
         print('0 : SKIP')
@@ -184,9 +234,46 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             operation_list.append(i)
         #operation_list.append(['statement', {'datatype':'Item', 's':map_softwares[inp_article], 'p':man_nodes['described by source'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
     #print(operation_list)
+    '''
+    #print('inp_article: ', inp_article)
+    #SI NO HAY SOFTWARE SE CREA
+    if software_links == {}:
+        aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
+        for i in aux_ops:
+            operation_list.append(i)
+    #SI HAY SOFTWARE
+    else:
+        #SELECCIONAR SOFTWARE
+        click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
+        print('0 : CREATE SOFTWARE')
+        count = 1
+        map_softwares.update({'0':'SKIP'})
+        for i in software_links:
+            print(count, ' : ', i)
+            map_softwares.update({str(count):i})
+            count = count+1
+        inp_software = input("SOFTWARE NUMBER: ").strip()
     
-    print('inp_article: ', inp_article)
-    if software_links !={}:
+        while(inp_software not in map_softwares):
+            inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()   
+        
+        #SI NO SE SELCCIONA SE CREA     
+        if inp_software == '0':
+            aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
+            for i in aux_ops:
+                operation_list.append(i)
+        else:
+            qnode_software = map_softwares[inp_software]
+    
+    #check enlaces
+    if qnode_article == None or qnode_software == None:
+        
+        operation_list.append(['statement', {'datatype':'Item', 's':str(info['name'][0]['result']['value'])+' scholarly article', 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
+        operation_list.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':str(info['name'][0]['result']['value'])+' scholarly article', 'qualifiers':None}])
+
+    else:
+       getRelations(operation_list, article_links, software_links, qnode_article, qnode_software,man_nodes, results, wbi) 
+    '''if software_links !={}:
         count=1
         click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
         print('0 : SKIP')
@@ -228,7 +315,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
         for i in aux_ops:
             operation_list.append(i)
         operation_list.append(['statement', {'datatype':'Item', 's':qnode_article, 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
-        
+    '''    
     #prnt('results en operations', results)
     #print('operation list en operations', operation_list)
     for i in operation_list:
