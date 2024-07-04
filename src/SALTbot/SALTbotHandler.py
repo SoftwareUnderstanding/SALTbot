@@ -16,7 +16,7 @@ import time
 import json
 import re
 
-import pandas as pd
+
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
@@ -84,6 +84,10 @@ def getOptionalNodes(wbi, configData):
             opt_nodes['free software'] = getCorrectQnode('free software', wbi_helpers.search_entities(search_string='free software', dict_result = True,search_type='item'))
         except:
             aux = 1
+        try:
+            opt_nodes['OpenAlex ID'] = getCorrectQnode('OpenAlex ID', wbi_helpers.search_entities(search_string='OpenAlex ID', dict_result=True, search_type='property'))
+        except:
+            aux = 1
     
     #TODO:change Pnode for local
     #print(opt_nodes)
@@ -141,16 +145,20 @@ def getRelatedEntities(entityJSON, candidates, property=None):
     return entities
 
 
+#TODO: uncomment if
 # queries the graph for entities with name, which are instance of targetClass. The instance_of pnode has to be passed for integration with other wikibases
 def getEntitiesByName(name, targetClass, man_nodes, wbi):
 
     entities={}
 
     results_wbi_helper = wbi_helpers.search_entities(search_string=name, dict_result=True, search_type='item')
-    
+    #print(results_wbi_helper)
     for i in results_wbi_helper:
         #print(i['description'])      
         query = '''ASK {wd:'''+i['id']+''' wdt:'''+man_nodes['instance of']+'''+ wd:'''+targetClass+'''}'''
+
+        #print('query: ', query)
+
         match = wbi_helpers.execute_sparql_query(query)
 
         if(str(match['boolean'])=='True' and i['id'] not in entities.keys()):
@@ -159,8 +167,7 @@ def getEntitiesByName(name, targetClass, man_nodes, wbi):
     return(entities)
     
 
-#returns all the article titles detected
-#info: json extracted with somef
+
 
 #info: json extracted with somef
 #wbi: wbi object with all the graph related info
@@ -182,13 +189,20 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     softwares = {"TITLE EXTRACTION":{}, "REPO NAME":{}}
 
     parsedTitles, DOIs = SALTbotSearcher.parseTitles(info)
-
+    #print('parsedTitles: ', parsedTitles)
     results.update({info['code_repository'][0]['result']['value']:{'repo-article':[], 'article':None, 'software':None, 'article-software-link':False, 'software-article-link':False}})
+
+
+    #print('parsedTitles', parsedTitles)
 
     if(parsedTitles == []):
         print("NO DETECTED TITLES")
     else:   
-        for title in parsedTitles:       
+        for title in parsedTitles:
+            openAlex = SALTbotSearcher.queryOpenAlex(title)
+            #if openAlex is not None and 'doi' in openAlex.keys():
+                #print('doi found in openAlex: ', openAlex['doi'])
+                #print(openAlex)
             articles['TITLE EXTRACTION'].update(getEntitiesByName(title,man_nodes['scholarly article'], man_nodes, wbi))
             results[info['code_repository'][0]['result']['value']]['repo-article'].append(title)
             
@@ -197,8 +211,11 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     if(articles['TITLE EXTRACTION']=={}):
         articles['REPO NAME'].update(getEntitiesByName( name,man_nodes['scholarly article'], man_nodes, wbi))
     
+    #print('ARTICLES: ', articles)
 
     articles = articles['REPO NAME'] | articles['TITLE EXTRACTION']
+
+    #print('ARTICLES: ', articles)
 
     if parsedTitles != []: #and articles != {})
         for title in parsedTitles: 
@@ -251,7 +268,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
     for i in articles.keys():
         print('ARTICLE FOUND: ',i, ' : ', articles[i]['labels']['en']['value'])
 
-    if articles == {}:
+    if softwares == {}:
         print('NO SOFTWARE FOUND ON TARGET WIKIBASE')
     for i in softwares.keys():
         print('SOFTWARE FOUND: ',i, ' : ', softwares[i]['labels']['en']['value'])
@@ -286,8 +303,10 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
             print('SOFTWARE [', i, ':', softwares[i]['labels']['en']['value'], '] IS LINKED WITH ARTICLE [', j[0], ':', j[1], '] THROUGH PROPERTY [', j[2], ']')
 
 
-    
-    operation_list = SALTbotStatementDefiner.defineOperations(info, article_links, software_links,[auto, article_auto, software_auto], man_nodes, opt_nodes, results, wbi)
+    if openAlex == None and articles == {}:
+        print("NO INFORMATION REGARDING THE ARTICLE COULD BE FOUND IN WIKIBASE OR OPENALEX. SALTBOT WILL NOT INTRODUCE ANY STATEMENTS")
+        return None
+    operation_list = SALTbotStatementDefiner.defineOperations(info, article_links, software_links,[auto, article_auto, software_auto], man_nodes, opt_nodes, results, openAlex, wbi)
     
         
     return operation_list

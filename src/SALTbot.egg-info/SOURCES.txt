@@ -1,0 +1,17 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/SALTbot/SALTbot.py
+src/SALTbot/SALTbotHandler.py
+src/SALTbot/SALTbotSearcher.py
+src/SALTbot/SALTbotStatementDefiner.py
+src/SALTbot/SALTbotUpdater.py
+src/SALTbot/__init__.py
+src/SALTbot.egg-info/PKG-INFO
+src/SALTbot.egg-info/SOURCES.txt
+src/SALTbot.egg-info/dependency_links.txt
+src/SALTbot.egg-info/entry_points.txt
+src/SALTbot.egg-info/not-zip-safe
+src/SALTbot.egg-info/requires.txt
+src/SALTbot.egg-info/top_level.txt

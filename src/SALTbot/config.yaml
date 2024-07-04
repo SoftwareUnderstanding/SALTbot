@@ -1,0 +1,5 @@
+MEDIAWIKI_API_URL: 'http://localhost:8181/api.php'
+PASSWORD: SALTbotPass
+SPARQL_ENDPOINT_URL: 'http://localhost:8282/proxy/wdqs/bigdata/namespace/wdq/sparql'
+USER: SALTbot
+WIKIBASE_URL: 'http://localhost:8181'

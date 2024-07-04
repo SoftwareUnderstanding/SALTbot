@@ -6,34 +6,38 @@ from wikibaseintegrator import wbi_helpers
 from wikibaseintegrator.datatypes import ExternalID, Item, String, URL, Quantity, Property, CommonsMedia, GlobeCoordinate
 from wikibaseintegrator.models import Qualifiers
 from wikibaseintegrator.wbi_enums import ActionIfExists
-import pandas as pd
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 import re
+import json
+import ast
 
-
-def createEmptySoftware(data, wbi):
+def createEmptyEntity(data, wbi):
     try:
-        print('Creating software...')
+        print('Creating entity...')
    
         item_wb = wbi.item.new()
         item_wb.labels.set(language='en', value=data['LABEL'])
         item_wb.descriptions.set(language='en', value=data['DESCRIPTION'])
-        summary='created software '+ data['LABEL']
+        summary='created '+ data['LABEL']
         item_wb = item_wb.write(summary=summary) 
-        print('Software created as ', item_wb.id)
+        print('Item created as ', item_wb.id)
         return item_wb
     except Exception as e:
         print('Create ',data,' could not be done. Reason: ', e)
 
 
-def createStatement(data,last_software,subject_map, wbi):
+
+
+
+
+def createStatement(data,last_item,subject_map, wbi):
     try:
-  
+        
         if not re.search("Q\d+", data['s']):
-            data['s'] =  last_software.id
+            data['s'] =  last_item.id
         elif not re.search("Q\d+", data['o']):
-            data['o'] =  last_software.id
+            data['o'] =  last_item.id
         
         print('creating statement [', data['s'], ' ', data['p'],' ' ,data['o'], ']')
 
@@ -50,19 +54,21 @@ def createStatement(data,last_software,subject_map, wbi):
     except Exception as e:
         print('statement ', data, 'could not be imported. Reason: ', e)
 
-
+#CHANGED LAST_ITEM FROM LAST_SOFTWARE
 def updateChanges(operation_list, wbi):
-    last_software = None
+    last_item = None
     subject_map = {}
     if(operation_list == []):
         print('SALTbot did not detect any relevant statements to add to the graph')
     for operation in operation_list:  
         if operation[0]=='create':
-            last_software = createEmptySoftware(operation[1], wbi)
-            subject_map.update({last_software.id:[last_software, '']}) 
+            last_item = createEmptyEntity(operation[1], wbi)
+            subject_map.update({last_item.id:[last_item, '']})
+
+            print("subject_map: ", subject_map) 
            
         elif operation[0] == 'statement':
-            createStatement(operation[1],last_software,subject_map, wbi)
+            createStatement(operation[1],last_item,subject_map, wbi)
     for entity in subject_map.keys():
     
         try:
@@ -74,18 +80,27 @@ def updateChanges(operation_list, wbi):
             print(e)
 
 
-
 def executeOperations(operation_list,auto,wbi):
     
     click.echo(click.style('SALTbot WILL INTRODUCE THESE STATEMENTS IN WIKIDATA', fg='red', bold = True))
+    #print(operation_list)
+    #operation = json.load(str(operation_list.readlines()))
+    #print(operation)
+    operation_list_aux = []
     for operation in operation_list:
-        if operation[0] == 'create':
-            print('CREATE SOFTWARE [', operation[1]['LABEL'], '] WITH DESCRIPTION [', operation[1]['DESCRIPTION'],']')
-        if operation[0] == 'statement':
-            print('CREATE STATEMENT [', operation[1]['s'],' ',operation[1]['p'],' ',operation[1]['o'],'] OF TYPE [', operation[1]['datatype'], ']')
+        #print('operation en bucle', operation)
+        operation_aux = ast.literal_eval(operation)
+        operation_list_aux.append(operation_aux)
+        #print('operation_aux', operation_aux)
+        #print('op 1', operation_aux[1])
+        #print(operation_aux[1].keys())
+        if operation_aux[0] == 'create':
+            print('CREATE ENTITY [', operation_aux[1]['LABEL'], '] WITH DESCRIPTION [', operation_aux[1]['DESCRIPTION'],']')
+        if operation_aux[0] == 'statement':
+            print('CREATE STATEMENT [', operation_aux[1]['s'],' ',operation_aux[1]['p'],' ',operation_aux[1]['o'],'] OF TYPE [', operation_aux[1]['datatype'], ' WITH QUALIFIERS ', operation_aux[1]['qualifiers'],']')
     
-    if auto != True:
-        updateChanges(operation_list, wbi)
+    if auto == True:
+        updateChanges(operation_list_aux, wbi)
     else:
         confirmation = input("CONFIRM (Y/N): ").strip()
             
@@ -93,5 +108,5 @@ def executeOperations(operation_list,auto,wbi):
             confirmation = input("ONLY Y OR N ARE VALID CONFIRMATION ANSWERS. CONFIRM (Y/N): ").strip()	
             
         if(confirmation == "Y"):
-            updateChanges(operation_list, wbi)
+            updateChanges(operation_list_aux, wbi)
 

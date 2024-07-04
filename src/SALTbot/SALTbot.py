@@ -54,6 +54,44 @@ def configure(auto):
 
 	click.secho(f"Success", fg="green")
 
+@click.command()
+@click.option('--file','-f', type = click.Path(exists=True), help='Statement operations outputted by SALTbot using describe command')
+@click.option('--auto', '-a', is_flag=True, help='Sets bot to auto mode. The bot will not ask for user confirmations and will only require supervision if one or more articles or software are found in Wikidata.')
+def update(file, auto):
+	"""Update Statements provided by file into target Wikibase"""
+
+	try:
+		stream = open('config.yaml', 'r')   
+		config_data = yaml.load(stream, Loader = SafeLoader)
+	except Exception as e:
+		print(e)
+		click.echo('SALTbot Error: Configuration file not found')
+		return
+
+	user = config_data['USER']
+	passw = config_data['PASSWORD']
+
+	if config_data['MEDIAWIKI_API_URL']!='':
+		#print(config_data['MEDIAWIKI_API_URL'])
+		wbi_config['MEDIAWIKI_API_URL'] = config_data['MEDIAWIKI_API_URL']
+	if config_data['SPARQL_ENDPOINT_URL']!='':
+		#print(config_data['SPARQL_ENDPOINT_URL'])
+		wbi_config['SPARQL_ENDPOINT_URL'] = config_data['SPARQL_ENDPOINT_URL']
+	if config_data['WIKIBASE_URL']!='':
+		#print(config_data['WIKIBASE_URL'])
+		wbi_config['WIKIBASE_URL'] = config_data['WIKIBASE_URL']
+
+
+	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+user+')'
+	
+	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
+
+	operation_list = open(file, 'r')
+	#operation_list = json.loads(operations)
+
+	SALTbotUpdater.executeOperations(operation_list,auto,wbi)
+	operation_list.close()
+
 
 #@click.command(help='Run SALTbot')
 @click.command()
@@ -64,12 +102,13 @@ def configure(auto):
 @optgroup.option('--urlfile','-ru', type = click.Path(exists=True), help='File with one or more url entries to be treated. SALTbot will analyze each individual url in succesion and introduce the links afterwards.')
 @optgroup.option('--jsonfile','-js', type = click.Path(exists=True), help='Path to the JSON extracted from the target repository with SOMEF.')
 @optgroup.option('--jsondir', '-rjs', type = click.Path(exists=True), help = 'Path of a directory with one or multiple JSONs extracted with SOMEF. SALTbot will analyze each individual json in succesion and introduce the links afterwards.')
-def run(jsonfile, url, urlfile, jsondir, auto,  output):
-	"""Run SALTbot"""
+def describe(jsonfile, url, urlfile, jsondir, auto,  output):
+	"""Creates the statements to link software and articles"""
 	
 	try:
 		stream = open('config.yaml', 'r')   
 		config_data = yaml.load(stream, Loader = SafeLoader)
+		#print(config_data)
 	except Exception as e:
 		print(e)
 		click.echo('SALTbot Error: Configuration file not found')
@@ -121,6 +160,11 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	result_dump = open('results.txt', 'a')
 
+	if os.path.exists("operation_list.txt"):
+  		os.remove("operation_list.txt")
+	
+	operation_dump = open('operation_list.txt', 'w')
+
 	if(jsonfile):
 
 		print()
@@ -134,11 +178,16 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		info = json.loads(f.read())
 		operation_list = SALTbotHandler.SALTbot(wbi, info, man_nodes, opt_nodes, auto, results)
+
+		for i in results:
+			result_dump.write(str(i)+':'+str(results[i])+'\n')
+		
 		#print('results final', results)
-		if len(operation_list) > 0:
-			SALTbotUpdater.executeOperations(operation_list,auto,wbi)
-			for i in results:
-				result_dump.write(str(i)+':'+str(results[i])+'\n')
+		for i in operation_list:
+			operation_dump.write(str(i)+'\n')
+
+		
+			
 		
 	elif(url):
 
@@ -166,11 +215,19 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 
 		info = json.loads(f.read())
 		operation_list = SALTbotHandler.SALTbot(wbi, info, man_nodes, opt_nodes, auto, results)
-		if len(operation_list) > 0:
-			SALTbotUpdater.executeOperations(operation_list,auto, wbi)
+
+		for i in results:
+			result_dump.write(str(i)+':'+str(results[i])+'\n')
+
 		#print('results final', results)
-			for i in results:
-				result_dump.write(str(i)+':'+str(results[i])+'\n')
+		for i in operation_list:
+			operation_dump.write(str(i)+'\n')
+
+		
+		#if len(operation_list) > 0:
+		#	SALTbotUpdater.executeOperations(operation_list,auto, wbi)
+		#print('results final', results)
+			
 		
 	elif(urlfile):
 		try:
@@ -209,17 +266,20 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			info = json.loads(f.read())
 			operation_list = operation_list + SALTbotHandler.SALTbot(wbi, info, man_nodes, opt_nodes, auto, results)
 			#print(operation_list)
-			if len(operation_list) > 10:
-				SALTbotUpdater.executeOperations(operation_list,auto, wbi)
-				operation_list = []
-				for i in results:
-					result_dump.write(str(i)+':'+str(results[i])+'\n')
-				results = {}
+			#if len(operation_list) > 10:
+			#	SALTbotUpdater.executeOperations(operation_list,auto, wbi)
+			#	operation_list = []
+		#for i in results:
+		#	result_dump.write(str(i)+':'+str(results[i])+'\n')
+		#	results = {}
 		
-		if operation_list != []:
-			SALTbotUpdater.executeOperations(operation_list,auto, wbi)
-			for i in results:
-				result_dump.write(str(i)+':'+str(results[i])+'\n')
+		#print('results final', results)
+		for i in operation_list:
+			operation_dump.write(str(i)+'\n')
+		#if operation_list != []:
+		#	SALTbotUpdater.executeOperations(operation_list,auto, wbi)
+		for i in results:
+			result_dump.write(str(i)+':'+str(results[i])+'\n')
 			
 
 	elif(jsondir):
@@ -238,22 +298,28 @@ def run(jsonfile, url, urlfile, jsondir, auto,  output):
 			info = json.loads(f.read())
 			operation_list = operation_list + SALTbotHandler.SALTbot(wbi, info, man_nodes, opt_nodes, auto, results)
 
-			if len(operation_list) > 10:
-				SALTbotUpdater.executeOperations(operation_list,auto, wbi)
-				operation_list = []
-				for i in results:
-					result_dump.write(str(i)+':'+str(results[i])+'\n')
-				results = {}
+		#	if len(operation_list) > 10:
+		#		SALTbotUpdater.executeOperations(operation_list,auto, wbi)
+		#		operation_list = []
+		#		for i in results:
+		#			result_dump.write(str(i)+':'+str(results[i])+'\n')
+		#		results = {}
 
-		if operation_list != []:
-			SALTbotUpdater.executeOperations(operation_list,auto,wbi)
+		#if operation_list != []:
+		#	SALTbotUpdater.executeOperations(operation_list,auto,wbi)
 			for i in results:
 				result_dump.write(str(i)+':'+str(results[i])+'\n')
 		
-	result_dump.close()	
+		#print('results final', results)
+		for i in operation_list:
+			operation_dump.write(str(i)+'\n')
+		
+	result_dump.close()
+	operation_dump.close	
 
 cli.add_command(configure)
-cli.add_command(run)
+cli.add_command(update)
+cli.add_command(describe)
 
 
 
