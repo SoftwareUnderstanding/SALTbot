@@ -53,15 +53,17 @@ python SALTbot.py run  [ARGS]
  ## Citation
  If you use SALTbot, please use the following citation:
  ```
- @software{Bolinches_SALTbot_Software_and_2023,
-  author = {Bolinches, Jorge and Garijo, Daniel},
-  doi = {10.5281/zenodo.8190001},
-  month = jul,
-  title = {{SALTbot: Software and Article Linker Toolbot}},
-  url = {https://github.com/SoftwareUnderstanding/SALTbot},
-  version = {v0.0.1},
-  year = {2023}
-  }
+ @article{bolinches2023saltbot,
+  title		   = {SALTBot: Linking Software and Articles in Wikidata},
+  author	   = {Bolinches, Jorge and Garijo, Daniel},
+  year         = {2023},
+  booktitle    = {Proceedings of the Wikidata Workshop 2023 co-located with 22nd International Semantic Web Conference (ISWC 2023)},
+  publisher    = {CEUR-WS.org},
+  series       = {{CEUR} Workshop Proceedings},
+  volume       = {3640},
+  url          = {https://ceur-ws.org/Vol-3640/paper12.pdf}
+}
+
  ```
 
   
