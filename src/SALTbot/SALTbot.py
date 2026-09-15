@@ -18,8 +18,8 @@ from wikibaseintegrator.wbi_config import config as wbi_config
 from wikibaseintegrator import wbi_login
 from wikibaseintegrator import wbi_helpers
 
-import SALTbotHandler
-import SALTbotUpdater
+from . import SALTbotHandler
+from . import SALTbotUpdater
 
 
 
@@ -84,7 +84,7 @@ def update(file, auto):
 
 	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+user+')'
 	
-	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
+	wbi=WikibaseIntegrator(login=wbi_login.Login(user=user, password=passw))
 
 	operation_list = open(file, 'r')
 	#operation_list = json.loads(operations)
@@ -130,7 +130,7 @@ def describe(jsonfile, url, urlfile, jsondir, auto,  output):
 
 	wbi_config['USER_AGENT'] = 'SALTbot/1.0 (https://www.wikidata.org/wiki/User:'+user+')'
 	
-	wbi=WikibaseIntegrator(login=wbi_login.Clientlogin(user=user, password=passw))
+	wbi=WikibaseIntegrator(login=wbi_login.Login(user=user, password=passw))
 
 	#MANDATORY NODES (instance_of, main_subject, described_by_source, scientific article, software category, free software)
 	man_nodes = {}
@@ -161,9 +161,9 @@ def describe(jsonfile, url, urlfile, jsondir, auto,  output):
 	result_dump = open('results.txt', 'a')
 
 	if os.path.exists("operation_list.txt"):
-  		os.remove("operation_list.txt")
+		os.remove("operation_list.txt")
 	
-	operation_dump = open('operation_list.txt', 'w')
+	operation_dump=open('operation_list.txt', 'w')
 
 	if(jsonfile):
 

@@ -31,51 +31,147 @@ def createEmptyEntity(data, wbi):
 
 
 
-def createStatement(data,last_item,subject_map, wbi):
+def createStatement(data, created_entities, subject_map, wbi):
     try:
-        
-        if not re.search("Q\d+", data['s']):
-            data['s'] =  last_item.id
-        elif not re.search("Q\d+", data['o']):
-            data['o'] =  last_item.id
-        
-        print('creating statement [', data['s'], ' ', data['p'],' ' ,data['o'], ']')
+
+        # Resolve references to entities created during this execution
+        if data['s'] in created_entities:
+            data['s'] = created_entities[data['s']]
+
+        if data['o'] in created_entities:
+            data['o'] = created_entities[data['o']]
+
+        print(
+            'creating statement [',
+            data['s'],
+            ' ',
+            data['p'],
+            ' ',
+            data['o'],
+            ']'
+        )
 
         if data['s'] not in subject_map.keys():
             item_wb = wbi.item.get(entity_id=data['s'])
-            subject_map.update({item_wb.id:[item_wb, '']})
+            subject_map.update({
+                item_wb.id: [item_wb, '']
+            })
+
         if data['datatype'] == 'Item':
-            subject_map[data['s']][0].claims.add(Item(value=data['o'], prop_nr=data['p']),action_if_exists = ActionIfExists.FORCE_APPEND)
-            subject_map[data['s']][1] = subject_map[data['s']][1] +' '+ str(data['p']) + ':' + str(data['o']) + ' '
+            subject_map[data['s']][0].claims.add(
+                Item(
+                    value=data['o'],
+                    prop_nr=data['p']
+                ),
+                action_if_exists=ActionIfExists.FORCE_APPEND
+            )
+
+            subject_map[data['s']][1] = (
+                subject_map[data['s']][1]
+                + ' '
+                + str(data['p'])
+                + ':'
+                + str(data['o'])
+                + ' '
+            )
+
         elif data['datatype'] == 'URL':
-            subject_map[data['s']][0].claims.add(URL(value=data['o'], prop_nr=data['p'], qualifiers=data['qualifiers']), action_if_exists = ActionIfExists.FORCE_APPEND)
-            subject_map[data['s']][1] = subject_map[data['s']][1] + ' ' +str(data['p']) + ':' +str(data['o']) + ' '
-        print('succesfully created [', data['s'], ' ', data['p'],' ' ,data['o'], ']')
+            subject_map[data['s']][0].claims.add(
+                URL(
+                    value=data['o'],
+                    prop_nr=data['p'],
+                    qualifiers=data['qualifiers']
+                ),
+                action_if_exists=ActionIfExists.FORCE_APPEND
+            )
+
+            subject_map[data['s']][1] = (
+                subject_map[data['s']][1]
+                + ' '
+                + str(data['p'])
+                + ':'
+                + str(data['o'])
+                + ' '
+            )
+
+        print(
+            'succesfully created [',
+            data['s'],
+            ' ',
+            data['p'],
+            ' ',
+            data['o'],
+            ']'
+        )
+
     except Exception as e:
-        print('statement ', data, 'could not be imported. Reason: ', e)
+        print(
+            'statement ',
+            data,
+            'could not be imported. Reason: ',
+            e
+        )
 
-#CHANGED LAST_ITEM FROM LAST_SOFTWARE
 def updateChanges(operation_list, wbi):
-    last_item = None
+    created_entities = {}
     subject_map = {}
-    if(operation_list == []):
-        print('SALTbot did not detect any relevant statements to add to the graph')
-    for operation in operation_list:  
-        if operation[0]=='create':
-            last_item = createEmptyEntity(operation[1], wbi)
-            subject_map.update({last_item.id:[last_item, '']})
 
-            print("subject_map: ", subject_map) 
-           
+    if operation_list == []:
+        print(
+            'SALTbot did not detect any relevant statements to add to the graph'
+        )
+
+    for operation in operation_list:
+
+        if operation[0] == 'create':
+            item_wb = createEmptyEntity(operation[1], wbi)
+
+            if item_wb is None:
+                print(
+                    'Entity could not be created:',
+                    operation[1]['LABEL']
+                )
+                continue
+
+            # Map temporary label -> real Wikidata QID
+            created_entities[operation[1]['LABEL']] = item_wb.id
+
+            subject_map.update({
+                item_wb.id: [item_wb, '']
+            })
+
+            print(
+                "created_entities:",
+                created_entities
+            )
+
+            print(
+                "subject_map:",
+                subject_map
+            )
+
         elif operation[0] == 'statement':
-            createStatement(operation[1],last_item,subject_map, wbi)
+            createStatement(
+                operation[1],
+                created_entities,
+                subject_map,
+                wbi
+            )
+
     for entity in subject_map.keys():
-    
+
         try:
-            summary=subject_map[entity][1]
-            print('summary: ', summary)
-            subject_map[entity][0].write(summary=summary)
-            #print('succesfully written statements for ', subject_map[entity])
+            summary = subject_map[entity][1]
+
+            print(
+                'summary: ',
+                summary
+            )
+
+            subject_map[entity][0].write(
+                summary=summary
+            )
+
         except Exception as e:
             print(e)
 

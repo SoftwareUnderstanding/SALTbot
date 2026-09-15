@@ -21,7 +21,16 @@ def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
     try:
         resultOps.append(['create',{'LABEL':info['name'][0]['result']['value'], 'DESCRIPTION':info['description'][0]['result']['value']}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
-        resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['article'], 'qualifiers':None}])
+        resultOps.append([
+            'statement',
+            {
+                'datatype': 'Item',
+                's': info['name'][0]['result']['value'],
+                'p': man_nodes['instance of'],
+                'o': man_nodes['software'],
+                'qualifiers': None
+            }
+        ])
     except Exception as e:
         print(e)
 
@@ -150,6 +159,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     operation_list = []
     map_articles = {}
     map_softwares = {}
+    auto_mode = auto[0]
 
     #print(man_nodes)
     #print(opt_nodes)
@@ -171,32 +181,39 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
                 operation_list.append(i)
     #SI HAY ARTICULOS
     else:
-        #SELECCION ARTICULO
-        click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
-        print('0 : CREATE ARTICLE')
-        map_articles.update({'0':'SKIP'})
-        count = 1
-        for i in article_links:
-            print(count, ' : ', i)
-            map_articles.update({str(count):i})
-            count = count+1
-
-        inp_article = input("ARTICLE NUMBER: ").strip()
-        while(inp_article not in map_articles):
-            inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
-        
-        #SI SELECCIONA 0, crear
-        if inp_article == '0':
-                #results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
-                #return []
-            aux_ops = createArticleOperations(info, man_nodes, opt_nodes,openAlex, wbi)
-            #    qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
-            for i in aux_ops:
-                operation_list.append(i)
-        #SI SELECCIONA OTRO, GUARAR QNODO
+        if auto_mode:
+            if len(article_links) != 1:
+                print('SALTbot auto mode could not choose between multiple articles. Re-run without --auto.')
+                return []
+            qnode_article = next(iter(article_links))
+            print('AUTOMATICALLY SELECTED ', qnode_article, 'AS ARTICLE')
         else:
-            qnode_article = map_articles[inp_article]
-            #results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
+            #SELECCION ARTICULO
+            click.echo(click.style('SELECT AN ARTICLE : ', fg='blue', bold = True))
+            print('0 : CREATE ARTICLE')
+            map_articles.update({'0':'SKIP'})
+            count = 1
+            for i in article_links:
+                print(count, ' : ', i)
+                map_articles.update({str(count):i})
+                count = count+1
+
+            inp_article = input("ARTICLE NUMBER: ").strip()
+            while(inp_article not in map_articles):
+                inp_article = input("NOT A VALID ARTICLE. CHOOSE ANOTHER ARTICLE NUMBER: ").strip()
+            
+            #SI SELECCIONA 0, crear
+            if inp_article == '0':
+                    #results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
+                    #return []
+                aux_ops = createArticleOperations(info, man_nodes, opt_nodes,openAlex, wbi)
+                #    qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
+                for i in aux_ops:
+                    operation_list.append(i)
+            #SI SELECCIONA OTRO, GUARAR QNODO
+            else:
+                qnode_article = map_articles[inp_article]
+                #results[info['code_repository'][0]['result']['value']].update({'article':map_articles[inp_article]})
   
     '''            
     if article_links !={}:
@@ -243,33 +260,71 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             operation_list.append(i)
     #SI HAY SOFTWARE
     else:
-        #SELECCIONAR SOFTWARE
-        click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
-        print('0 : CREATE SOFTWARE')
-        count = 1
-        map_softwares.update({'0':'SKIP'})
-        for i in software_links:
-            print(count, ' : ', i)
-            map_softwares.update({str(count):i})
-            count = count+1
-        inp_software = input("SOFTWARE NUMBER: ").strip()
-    
-        while(inp_software not in map_softwares):
-            inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()   
-        
-        #SI NO SE SELCCIONA SE CREA     
-        if inp_software == '0':
-            aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
-            for i in aux_ops:
-                operation_list.append(i)
+        if auto_mode:
+            if len(software_links) != 1:
+                print('SALTbot auto mode could not choose between multiple software entities. Re-run without --auto.')
+                return []
+            qnode_software = next(iter(software_links))
+            print('AUTOMATICALLY SELECTED ', qnode_software, 'AS SOFTWARE')
         else:
-            qnode_software = map_softwares[inp_software]
+            #SELECCIONAR SOFTWARE
+            click.echo(click.style('SELECT A SOFTWARE : ', fg='blue', bold = True))
+            print('0 : CREATE SOFTWARE')
+            count = 1
+            map_softwares.update({'0':'SKIP'})
+            for i in software_links:
+                print(count, ' : ', i)
+                map_softwares.update({str(count):i})
+                count = count+1
+            inp_software = input("SOFTWARE NUMBER: ").strip()
+        
+            while(inp_software not in map_softwares):
+                inp_software = input("NOT A VALID SOFTWARE. CHOOSE ANOTHER SOFTWARE NUMBER: ").strip()   
+            
+            #SI NO SE SELCCIONA SE CREA     
+            if inp_software == '0':
+                aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
+                for i in aux_ops:
+                    operation_list.append(i)
+            else:
+                qnode_software = map_softwares[inp_software]
     
     #check enlaces
     if qnode_article == None or qnode_software == None:
         
-        operation_list.append(['statement', {'datatype':'Item', 's':str(info['name'][0]['result']['value'])+' scholarly article', 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
-        operation_list.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':str(info['name'][0]['result']['value'])+' scholarly article', 'qualifiers':None}])
+        article_ref = (
+            qnode_article
+            if qnode_article is not None
+            else str(info['name'][0]['result']['value']) + ' scholarly article'
+        )
+
+        software_ref = (
+            qnode_software
+            if qnode_software is not None
+            else info['name'][0]['result']['value']
+        )
+
+        operation_list.append([
+            'statement',
+            {
+                'datatype': 'Item',
+                's': article_ref,
+                'p': man_nodes['main subject'],
+                'o': software_ref,
+                'qualifiers': None
+            }
+        ])
+
+        operation_list.append([
+            'statement',
+            {
+                'datatype': 'Item',
+                's': software_ref,
+                'p': man_nodes['described by source'],
+                'o': article_ref,
+                'qualifiers': None
+            }
+        ])
 
     else:
        getRelations(operation_list, article_links, software_links, qnode_article, qnode_software,man_nodes, results, wbi) 
