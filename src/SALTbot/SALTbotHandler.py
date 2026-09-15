@@ -20,9 +20,9 @@ import re
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
-import SALTbotUpdater
-import SALTbotSearcher
-import SALTbotStatementDefiner
+from . import SALTbotUpdater
+from . import SALTbotSearcher
+from . import SALTbotStatementDefiner
 
 def getCorrectQnode(name, Qnodes):
     result = None
@@ -41,7 +41,7 @@ def getOptionalNodes(wbi, configData):
 
 
     if (configData['MEDIAWIKI_API_URL'] == '' and configData['SPARQL_ENDPOINT_URL']=='' and configData['WIKIBASE_URL']=='') or (configData['MEDIAWIKI_API_URL'] == 'https://www.wikidata.org/w/api.php' and configData['SPARQL_ENDPOINT_URL']=='https://query.wikidata.org/' and configData['WIKIBASE_URL']=='https://www.wikidata.org'):
-       {'licenses': {}, 'code repository': 'P1324', 'programming language': 'P277', 'download url': 'P4945', 'license': 'P275', 'version control system': 'P8423', 'web interface software': 'P10627', 'Git': 'Q186055', 'GitHub': 'Q82066181', 'DOI': 'P356', 'free software': 'Q341'}
+        opt_nodes.update({'licenses': {}, 'code repository': 'P1324', 'programming language': 'P277', 'download url': 'P4945', 'license': 'P275', 'version control system': 'P8423', 'web interface software': 'P10627', 'Git': 'Q186055', 'GitHub': 'Q82066181', 'DOI': 'P356', 'free software': 'Q341'})
     else:
         aux = 0
         try:
@@ -158,8 +158,12 @@ def getEntitiesByName(name, targetClass, man_nodes, wbi):
         query = '''ASK {wd:'''+i['id']+''' wdt:'''+man_nodes['instance of']+'''+ wd:'''+targetClass+'''}'''
 
         #print('query: ', query)
+        if targetClass == man_nodes['scholarly article']:
+            endpoint = 'https://query-scholarly.wikidata.org/sparql'
+        else:
+            endpoint = 'https://query.wikidata.org/sparql'
 
-        match = wbi_helpers.execute_sparql_query(query)
+        match = wbi_helpers.execute_sparql_query(query, endpoint=endpoint)
 
         if(str(match['boolean'])=='True' and i['id'] not in entities.keys()):
             entities.update({i['id']:wbi.item.get(entity_id=i['id']).get_json()})
@@ -305,7 +309,7 @@ def SALTbot(wbi, info, man_nodes, opt_nodes, auto, results):
 
     if openAlex == None and articles == {}:
         print("NO INFORMATION REGARDING THE ARTICLE COULD BE FOUND IN WIKIBASE OR OPENALEX. SALTBOT WILL NOT INTRODUCE ANY STATEMENTS")
-        return None
+        return []
     operation_list = SALTbotStatementDefiner.defineOperations(info, article_links, software_links,[auto, article_auto, software_auto], man_nodes, opt_nodes, results, openAlex, wbi)
     
         
