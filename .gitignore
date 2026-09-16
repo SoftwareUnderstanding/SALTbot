@@ -1,0 +1,18 @@
+# env and cache files
+.venv
+.env
+__pycache__
+.pytest_cache
+.codex
+
+# Ignore config files
+config.yaml
+
+# ignore dir
+ignore
+
+# outputs files
+operation_list.txt
+results.txt 
+somef.json
+

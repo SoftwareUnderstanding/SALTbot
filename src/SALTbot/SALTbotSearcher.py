@@ -20,12 +20,20 @@ from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
 def parseBib(info):
     try:
-        bibparse = bibtexparser.loads(info["result"]["value"])
-        parsedtitle = parsedbib.entries[0]["title"]
-        print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
-    except Exception as e:
-        return None
-    parsedinfo.append(parsedtitle)
+        parsed_bib = bibtexparser.loads(info["result"]["value"])
+
+        if not parsed_bib.entries:
+            return None, None
+
+        entry = parsed_bib.entries[0]
+
+        title = entry.get("title")
+        doi = entry.get("doi")
+
+        return title, doi
+
+    except Exception:
+        return None, None
 
 
 def queryOpenAlex(article):
@@ -35,65 +43,82 @@ def queryOpenAlex(article):
 
     r = requests.get(url).json()
 
-    if r['meta']['count']>1:
+    if r['meta']['count']>0:
         return r['results'][0]
     else:
-         return None
+        return None
 
 #returns all the article titles detected
 #info: json extracted with somef
 def parseTitles(info):
     parsedinfo = []
-    authors = {}
     DOIs = {}
 
-    # For each extraction technique
-    if "citation" in info.keys():
-        for i in info["citation"]:
+    if "citation" not in info:
+        return parsedinfo, DOIs
 
+    for citation in info["citation"]:
 
-            #If it is File Exploration or Regular expression
-            if(i["technique"] == "file_exploration" or i["technique"] == "regular_expression"):
-                
-            
-                #try parsing to BIB
-                try:
-                    parsed = parseBib(i)
-                    parsedtitle = parsedbib.entries[0]["title"]
-                    #print(parsedbib.entries)
-                    print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
-                    parsedinfo.append(parsedtitle)
-                except Exception as e:
-                    #print(e)
-                #try parsing to YAML
-                
-                    try:
-                        parsedyaml = yaml.load(i["result"]["value"], Loader = SafeLoader)
-                        #print(parsedyaml.keys())
-                        if('preferred-citation' in parsedyaml.keys()):
-                            #print('yaml: ', parsedyaml['preferred-citation'])
-                            author_count = 0
-                            parsedtitle = parsedyaml['preferred-citation']['title']
+        if citation["technique"] not in [
+            "file_exploration",
+            "regular_expression"
+        ]:
+            continue
 
-                            if 'authors' in parsedyaml['preferred-citation'].keys():
-                                for author in parsedyaml['preferred-citation']['authors']:
-                                    authors.update({author_count:author})
-                                    author_count =  author_count +1
-                            if 'doi' in parsedyaml['preferred-citation'].keys():
-                                DOIs.update({parsedyaml['preferred-citation']['doi']:parsedtitle})
-                            elif 'DOI' in parsedyaml['preferred-citation'].keys():
-                                DOIs.update({parsedyaml['preferred-citation']['DOI']:parsedtitle})
-                            
-                        else:
-                            parsedtitle = parsedyaml["title"]
-                        #print(parsedyaml['preferred-citation']['title'])
-                        #print("yaml")
-                        print("DETECTED TITLE: ", parsedtitle, "     ", "TECHNIQUE: ", i["technique"])
-                        parsedinfo.append(parsedtitle)
-                    except Exception as e:
-                        print(e)  
-                        
-                
-    #print('authors:', authors)
-    
+        value = citation["result"]["value"].strip()
+
+        # BibTeX
+        if value.startswith("@"):
+            title, doi = parseBib(citation)
+
+            if title:
+                print(
+                    "DETECTED TITLE:",
+                    title,
+                    "     TECHNIQUE:",
+                    citation["technique"]
+                )
+
+                parsedinfo.append(title)
+
+                if doi:
+                    DOIs[doi] = title
+
+            continue
+
+        # YAML / CITATION.cff
+        try:
+            parsed_yaml = yaml.load(
+                value,
+                Loader=SafeLoader
+            )
+
+            if not isinstance(parsed_yaml, dict):
+                continue
+
+            if "preferred-citation" in parsed_yaml:
+                citation_data = parsed_yaml["preferred-citation"]
+            else:
+                citation_data = parsed_yaml
+
+            title = citation_data.get("title")
+
+            if title:
+                print(
+                    "DETECTED TITLE:",
+                    title,
+                    "     TECHNIQUE:",
+                    citation["technique"]
+                )
+
+                parsedinfo.append(title)
+
+            doi = citation_data.get("doi") or citation_data.get("DOI")
+
+            if doi and title:
+                DOIs[doi] = title
+
+        except Exception as e:
+            print(e)
+
     return parsedinfo, DOIs
