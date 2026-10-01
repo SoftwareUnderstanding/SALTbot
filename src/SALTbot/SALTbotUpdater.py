@@ -93,7 +93,23 @@ def createStatement(data, created_entities, subject_map, wbi):
                 + str(data['o'])
                 + ' '
             )
+        elif data['datatype'] == 'ExternalID':
+            subject_map[data['s']][0].claims.add(
+                ExternalID(
+                    value=data['o'],
+                    prop_nr=data['p']
+                ),
+                action_if_exists=ActionIfExists.FORCE_APPEND
+            )
 
+            subject_map[data['s']][1] = (
+                subject_map[data['s']][1]
+                + ' '
+                + str(data['p'])
+                + ':'
+                + str(data['o'])
+                + ' '
+            )
         print(
             'succesfully created [',
             data['s'],
