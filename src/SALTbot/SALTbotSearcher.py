@@ -20,7 +20,11 @@ from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
 def parseBib(info):
     try:
-        parsed_bib = bibtexparser.loads(info["result"]["value"])
+        bibtex_value = info["result"]["value"]
+        if hasattr(bibtexparser, "loads"):
+            parsed_bib = bibtexparser.loads(bibtex_value)
+        else:
+            parsed_bib = bibtexparser.parse_string(bibtex_value)
 
         if not parsed_bib.entries:
             return None, None
@@ -29,6 +33,10 @@ def parseBib(info):
 
         title = entry.get("title")
         doi = entry.get("doi")
+        if hasattr(title, "value"):
+            title = title.value
+        if hasattr(doi, "value"):
+            doi = doi.value
 
         return title, doi
 

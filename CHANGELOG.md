@@ -15,7 +15,7 @@
 - Prevented software-only operations when no scientific article is found
 - Added research of software in wikidata by the repository URL instead of only using the repository name 
 - the software research by URL includes the subclasses of software
-
+- Updated the bibtex parser in order to using a newer version
 
 ### Internal Data management
 - Now SALTBot generates a diferent operation_list.txt and results.txt for different softwares. with the formats `repoOrg_repoName_operation_list.txt` && `repoOrg_repoName_result.txts` 
@@ -32,3 +32,4 @@
 The update is then executed from the merged file, while the existing ``--file`` mode remains available for single-repository updates.
 If no operation files are found, SALTBot exits without logging in or writing to Wikidata.
 - Fixed minor bugs related to the reading of somef extractions
+
