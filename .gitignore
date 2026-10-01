@@ -4,15 +4,20 @@
 __pycache__
 .pytest_cache
 .codex
+.vscode
 
 # Ignore config files
 config.yaml
 
-# ignore dir
+# ignore dirs
 ignore
 
 # outputs files
 operation_list.txt
+final_operation_list.txt
 results.txt 
+operations/
+results/
 somef.json
+somef_outputs/
 

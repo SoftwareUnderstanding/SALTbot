@@ -61,17 +61,22 @@ lxml = ["lxml"]
 
 [[package]]
 name = "bibtexparser"
-version = "1.4.4"
+version = "2.0.1"
 description = "Bibtex parser for python 3"
 optional = false
-python-versions = "*"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "bibtexparser-1.4.4.tar.gz", hash = "sha256:093b6c824f7a71d3a748867c4057b71f77c55b8dbc07efc993b781771520d8fb"},
+    {file = "bibtexparser-2.0.1-py3-none-any.whl", hash = "sha256:aa263e252f4340c0fc50f9f7e5d63a9799b31b01a5aa460a261db3f2a01c6c38"},
+    {file = "bibtexparser-2.0.1.tar.gz", hash = "sha256:672a59f4ba431c4e9a6647cc7c42a267b22e257bcd2cfdb661863f3756c9ab14"},
 ]
 
 [package.dependencies]
-pyparsing = ">=2.0.3"
+pylatexenc = ">=2.10,<3.0"
+
+[package.extras]
+docs = ["sphinx"]
+test = ["jupyter", "pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "bs4"
@@ -2131,6 +2136,18 @@ files = [
 crypto = ["cryptography (>=3.4.0)"]
 
 [[package]]
+name = "pylatexenc"
+version = "2.11"
+description = "Simple LaTeX parser providing latex-to-unicode and unicode-to-latex conversion"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pylatexenc-2.11-py2.py3-none-any.whl", hash = "sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"},
+    {file = "pylatexenc-2.11.tar.gz", hash = "sha256:305a072a99ce736246049c9da05841b9d718c0f7ea8888f5f596cf15cb621053"},
+]
+
+[[package]]
 name = "pyoxigraph"
 version = "0.3.22"
 description = "Python bindings of Oxigraph, a SPARQL database and RDF toolkit"
@@ -3002,18 +3019,18 @@ tests = ["pandas", "polars", "pyarrow", "pytest", "pytest-cov", "pytest-xdist", 
 
 [[package]]
 name = "somef"
-version = "0.11.3"
+version = "0.11.4"
 description = "SOftware Metadata Extraction Framework: A tool for automatically extracting relevant software metadata from a source code repository (README, package files, etc)."
 optional = false
 python-versions = "<3.13,>=3.11"
 groups = ["main"]
 files = [
-    {file = "somef-0.11.3-py3-none-any.whl", hash = "sha256:0d72fe3404a503bac2f7804d5611bf3f2e7e358f31fad8a1b38dcfbb76050946"},
-    {file = "somef-0.11.3.tar.gz", hash = "sha256:530685cc66210ef93cf9a7506658a829c41da3c8f2c34a8559a995f2adc99f13"},
+    {file = "somef-0.11.4-py3-none-any.whl", hash = "sha256:70ca7b4416ee529322496841cdcc65a36073a84022804b9e3b2f469215043921"},
+    {file = "somef-0.11.4.tar.gz", hash = "sha256:08301778465621d6c2f21ae1a79d20142b374d4c512aa70e52c32a33a4b1f0a5"},
 ]
 
 [package.dependencies]
-bibtexparser = ">=1.4.1,<2.0.0"
+bibtexparser = ">=2.0.1,<3.0.0"
 bs4 = ">=0.0.1,<0.0.3"
 chardet = ">=5.2,<8.0"
 click = ">=8.1.7,<9.0.0"
@@ -3389,4 +3406,4 @@ scikit-learn = ["scikit-learn"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "c75e69c86b5bee63a9c19e35e9726999d7ad8f952466e1b763c858d66b2013a2"
+content-hash = "166ef8c76835ecd12f4d4f7b64a6c8720f401ee6ea4423991ea78a60d3b2e987"

@@ -38,12 +38,21 @@ def parseBib(info):
 
 def queryOpenAlex(article):
     article = article.replace(",", "")
-    url = 'https://api.openalex.org/works?filter=title.search:'+ article
+    url = 'https://api.openalex.org/works'
     #print(url)
 
-    r = requests.get(url).json()
+    try:
+        response = requests.get(
+            url,
+            params={'filter': 'title.search:' + article},
+            timeout=60
+        )
+        r = response.json()
+    except (requests.RequestException, ValueError) as e:
+        print('OpenAlex query failed:', e)
+        return None
 
-    if r['meta']['count']>0:
+    if r.get('meta', {}).get('count', 0)>0 and r.get('results'):
         return r['results'][0]
     else:
         return None
@@ -53,16 +62,32 @@ def queryOpenAlex(article):
 def parseTitles(info):
     parsedinfo = []
     DOIs = {}
+    article_types = {
+        "article",
+        "journal-article",
+        "journal article",
+        "conference-paper",
+        "conference paper",
+        "paper",
+        "proceedings-article",
+        "proceedings article",
+        "scholarlyarticle",
+        "scholarly article"
+    }
 
     if "citation" not in info:
         return parsedinfo, DOIs
 
     for citation in info["citation"]:
 
-        if citation["technique"] not in [
+        techniques = citation["technique"]
+        if not isinstance(techniques, list):
+            techniques = [techniques]
+
+        if not any(technique in [
             "file_exploration",
             "regular_expression"
-        ]:
+        ] for technique in techniques):
             continue
 
         value = citation["result"]["value"].strip()
@@ -100,6 +125,13 @@ def parseTitles(info):
                 citation_data = parsed_yaml["preferred-citation"]
             else:
                 citation_data = parsed_yaml
+
+            citation_type = str(
+                citation_data.get("type", "")
+                or citation["result"].get("type", "")
+            ).lower()
+            if citation_type not in article_types:
+                continue
 
             title = citation_data.get("title")
 

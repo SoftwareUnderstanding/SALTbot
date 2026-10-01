@@ -18,6 +18,7 @@ set +a
 # SALTBot configuration
 SALT_USER="${WIKIBASE_USER:-}"
 SALT_PASSWORD="${WIKIBASE_PASSWORD:-}"
+GITHUB_API_TOKEN="${GITHUB_API_TOKEN:-}"
 SALT_MEDIAWIKI_API_URL="${MEDIAWIKI_API_URL:-}"
 SALT_SPARQL_ENDPOINT_URL="${SPARQL_ENDPOINT_URL:-}"
 SALT_WIKIBASE_URL="${WIKIBASE_URL:-}"
@@ -32,9 +33,10 @@ if [ -z "$SALT_PASSWORD" ]; then
     exit 1
 fi
 
-printf '%s\n%s\n%s\n%s\n%s\n' \
+printf '%s\n%s\n%s\n%s\n%s\n%s\n' \
     "$SALT_USER" \
     "$SALT_PASSWORD" \
+    "$GITHUB_API_TOKEN" \
     "$SALT_MEDIAWIKI_API_URL" \
     "$SALT_SPARQL_ENDPOINT_URL" \
     "$SALT_WIKIBASE_URL" \

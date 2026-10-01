@@ -14,7 +14,27 @@ import re
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
 
-def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
+from . import SPARQLQuerys
+
+def normalizeDoi(value):
+    doi = str(value).strip()
+    doi = doi.replace('https://doi.org/', '')
+    doi = doi.replace('http://doi.org/', '')
+    doi = doi.replace('https://dx.doi.org/', '')
+    doi = doi.replace('http://dx.doi.org/', '')
+    doi = doi.replace('doi:', '')
+    return doi.strip()
+
+def normalizeUrl(value):
+    url = str(value).strip()
+    match = re.match(r'\[[^\]]+\]\(([^)]+)\)', url)
+
+    if match:
+        return match.group(1)
+
+    return url
+
+def createSoftwareOperations(info, man_nodes, opt_nodes, configData, wbi):
     resultOps = []
     #print(licenses)
     #Mandatory properties
@@ -63,15 +83,21 @@ def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
                     qualifiers.append([opt_nodes['Git'], opt_nodes['version control system']])
                     qualifiers.append([opt_nodes['GitHub'], opt_nodes['web interface software']])
 
-                resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':info['code_repository'][0]['result']['value'], 'qualifiers':qualifiers}])
+                resultOps.append(['statement',{'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':normalizeUrl(info['code_repository'][0]['result']['value']), 'qualifiers':qualifiers}])
                
             if prop == 'programming language':
                 dic_language = {}
                 size = 0
-                for language in info['programming_languages']:
-                    
-                    lang_name = language['result']['value']
-                    lang_size = language['result']['size']
+                for language in info.get('programming_languages', []):
+                    result = language.get('result', {})
+                    lang_name = result.get('value')
+                    if lang_name is None:
+                        continue
+
+                    try:
+                        lang_size = float(result.get('size', 1))
+                    except (TypeError, ValueError):
+                        lang_size = 1
 
                     if lang_name == 'Jupyter Notebook':
                         lang_name = 'Python'
@@ -82,15 +108,23 @@ def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
                         dic_language.update({lang_name:lang_size})
 
                     size = size + lang_size
+                if size == 0:
+                    continue
                 for lang in dic_language:
                     if dic_language[lang]/size > 0.33:
                         try:
-                            Qnode_programming_language = getCorrectQnode(lang, wbi_helpers.search_entities(search_string=lang, dict_result = True))
+                            Qnode_programming_language = SPARQLQuerys.sparql_getProgrammingLanguage(lang, configData)
                             if Qnode_programming_language != None:
                                 resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':Qnode_programming_language, 'qualifiers':qualifiers}])
                         except:
                             continue
             if prop == 'license':
+                if opt_nodes['licenses'] == {}:
+                    try:
+                        opt_nodes['licenses'] = SPARQLQuerys.sparql_getLicenses(configData)
+                    except Exception:
+                        print('No licenses found')
+
                 for l in info['license']:
                     
                     try:
@@ -105,7 +139,7 @@ def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
                     except:
                         continue           
             if prop == 'download url':
-                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':info['download_url'][0]['result']['value'], 'qualifiers':qualifiers}])
+                resultOps.append(['statement', {'datatype':'URL', 's':info['name'][0]['result']['value'], 'p':opt_nodes[prop], 'o':normalizeUrl(info['download_url'][0]['result']['value']), 'qualifiers':qualifiers}])
             #if prop == 'dateCreated':
             #    resultOps.append(['statement','Point in time' ['SOFTWARE', foundProps[prop][0], info['date_created'][0]['result']['value']]])
             #if prop == 'dateModified':
@@ -128,8 +162,22 @@ def createSoftwareOperations(info, man_nodes, opt_nodes, wbi):
     #print(resultOps)
     return resultOps
 
+def getArticleLabel(info, openAlex):
+    software_label = str(info['name'][0]['result']['value'])
+    article_label = None
+
+    if openAlex is not None:
+        article_label = openAlex.get('title') or openAlex.get('display_name')
+
+    if article_label and article_label != software_label:
+        return article_label
+
+    return software_label + ' scholarly article'
+
+
 def createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi):
     resultOps = []
+    article_label = getArticleLabel(info, openAlex)
     #print(licenses)
     #Mandatory properties
     print(man_nodes)
@@ -137,9 +185,9 @@ def createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi):
     #resultOps.append(['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['instance of'], 'o':man_nodes['article'], 'qualifiers':None}])
    
     try:
-        resultOps.append(['create',{'LABEL':openAlex['title'], 'DESCRIPTION':info['description'][0]['result']['value']}])
+        resultOps.append(['create',{'LABEL':article_label, 'DESCRIPTION':info['description'][0]['result']['value']}])
         #print('instanceof statement', ['statement',{'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':instanceOfPnode, 'o':softwareQnode[0]}])
-        resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':man_nodes['instance of'], 'o':man_nodes['scholarly article'], 'qualifiers':None}])
+        resultOps.append(['statement',{'datatype':'Item', 's':article_label, 'p':man_nodes['instance of'], 'o':man_nodes['scholarly article'], 'qualifiers':None}])
     except Exception as e:
         print(e)
     
@@ -148,14 +196,14 @@ def createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi):
         if opt_nodes[prop] != None:
             if prop == 'DOI':
                 if 'doi' in openAlex.keys():
-                    resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':opt_nodes['DOI'], 'o':openAlex['doi'], 'qualifiers':None}])
+                    resultOps.append(['statement',{'datatype':'ExternalID', 's':article_label, 'p':opt_nodes['DOI'], 'o':normalizeDoi(openAlex['doi']), 'qualifiers':None}])
             if prop == 'OpenAlex ID':
                 if 'id' in openAlex.keys():
-                    resultOps.append(['statement',{'datatype':'Item', 's':openAlex['title'], 'p':opt_nodes['OpenAlex ID'], 'o':openAlex['id'], 'qualifiers':None}])
+                    resultOps.append(['statement',{'datatype':'Item', 's':article_label, 'p':opt_nodes['OpenAlex ID'], 'o':openAlex['id'], 'qualifiers':None}])
     return resultOps
 
 #TODO:change to man_nodes
-def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, openAlex, wbi):
+def defineOperations(info, article_links, software_links,auto, man_nodes, opt_nodes, results, openAlex, configData, wbi):
     operation_list = []
     map_articles = {}
     map_softwares = {}
@@ -167,6 +215,10 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     #print('software links: ', software_links)
 
 
+    if openAlex is None and article_links == {}:
+        print('NO SCIENTIFIC ARTICLE FOUND. SALTbot will not create software-only operations.')
+        return []
+
     
            
     count=1
@@ -176,9 +228,10 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     
     #TODO:Si no hay articulos lo crea
     if article_links == {}:
-        aux_ops = createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi)
-        for i in aux_ops:
-                operation_list.append(i)
+        if openAlex is not None:
+            aux_ops = createArticleOperations(info, man_nodes, opt_nodes, openAlex, wbi)
+            for i in aux_ops:
+                    operation_list.append(i)
     #SI HAY ARTICULOS
     else:
         if auto_mode:
@@ -206,10 +259,11 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             if inp_article == '0':
                     #results[info['code_repository'][0]['result']['value']].update({'software':software_links.keys()})
                     #return []
-                aux_ops = createArticleOperations(info, man_nodes, opt_nodes,openAlex, wbi)
-                #    qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
-                for i in aux_ops:
-                    operation_list.append(i)
+                if openAlex is not None:
+                    aux_ops = createArticleOperations(info, man_nodes, opt_nodes,openAlex, wbi)
+                    #    qnode_article = info['name'][0]['result']['value'] + ' scholarly article'
+                    for i in aux_ops:
+                        operation_list.append(i)
             #SI SELECCIONA OTRO, GUARAR QNODO
             else:
                 qnode_article = map_articles[inp_article]
@@ -255,7 +309,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
     #print('inp_article: ', inp_article)
     #SI NO HAY SOFTWARE SE CREA
     if software_links == {}:
-        aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
+        aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, configData, wbi)
         for i in aux_ops:
             operation_list.append(i)
     #SI HAY SOFTWARE
@@ -283,7 +337,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             
             #SI NO SE SELCCIONA SE CREA     
             if inp_software == '0':
-                aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, wbi)
+                aux_ops = createSoftwareOperations(info, man_nodes, opt_nodes, configData, wbi)
                 for i in aux_ops:
                     operation_list.append(i)
             else:
@@ -295,7 +349,7 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
         article_ref = (
             qnode_article
             if qnode_article is not None
-            else str(info['name'][0]['result']['value']) + ' scholarly article'
+            else getArticleLabel(info, openAlex) if openAlex is not None else None
         )
 
         software_ref = (
@@ -304,27 +358,28 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             else info['name'][0]['result']['value']
         )
 
-        operation_list.append([
-            'statement',
-            {
-                'datatype': 'Item',
-                's': article_ref,
-                'p': man_nodes['main subject'],
-                'o': software_ref,
-                'qualifiers': None
-            }
-        ])
+        if article_ref is not None:
+            operation_list.append([
+                'statement',
+                {
+                    'datatype': 'Item',
+                    's': article_ref,
+                    'p': man_nodes['main subject'],
+                    'o': software_ref,
+                    'qualifiers': None
+                }
+            ])
 
-        operation_list.append([
-            'statement',
-            {
-                'datatype': 'Item',
-                's': software_ref,
-                'p': man_nodes['described by source'],
-                'o': article_ref,
-                'qualifiers': None
-            }
-        ])
+            operation_list.append([
+                'statement',
+                {
+                    'datatype': 'Item',
+                    's': software_ref,
+                    'p': man_nodes['described by source'],
+                    'o': article_ref,
+                    'qualifiers': None
+                }
+            ])
 
     else:
        getRelations(operation_list, article_links, software_links, qnode_article, qnode_software,man_nodes, results, wbi) 
@@ -366,13 +421,15 @@ def defineOperations(info, article_links, software_links,auto, man_nodes, opt_no
             operation_list.append(['statement', {'datatype':'Item', 's':info['name'][0]['result']['value'], 'p':man_nodes['described by source'], 'o':qnode_article}])
 
     else:
-        aux_ops = createSoftwareOperations(info,qnode_article, man_nodes, opt_nodes, wbi)
+        aux_ops = createSoftwareOperations(info,qnode_article, man_nodes, opt_nodes, configData, wbi)
         for i in aux_ops:
             operation_list.append(i)
         operation_list.append(['statement', {'datatype':'Item', 's':qnode_article, 'p':man_nodes['main subject'], 'o':info['name'][0]['result']['value'], 'qualifiers':None}])
     '''    
     #prnt('results en operations', results)
     #print('operation list en operations', operation_list)
+    if operation_list == []:
+        print('NO NEW OPERATIONS WERE GENERATED.')
     for i in operation_list:
         print(i)
     return operation_list
@@ -397,6 +454,8 @@ def getRelations(operation_list, article_links, software_links, Qnode_article, Q
         operation_list.append(['statement', {'datatype':'Item', 's': Qnode_article, 'p':man_nodes['main subject'], 'o':Qnode_software}])
     if software_article_link == False:
         operation_list.append(['statement', {'datatype':'Item', 's':Qnode_software, 'p':man_nodes['described by source'], 'o':Qnode_article}])
+    if article_software_link and software_article_link:
+        print('ARTICLE AND SOFTWARE ARE ALREADY LINKED. NO NEW STATEMENTS NEEDED.')
 
     results['article-software-link'] = article_software_link
     results['software-article-link'] = software_article_link
